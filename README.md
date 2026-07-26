@@ -49,6 +49,17 @@ on port `4242`.
 If auto-start cannot locate the CLI, set `kettle.command` to its absolute path,
 for example `~/.kettle-venv/bin/kettle`.
 
+## Color themes
+
+The extension ships **Kettle Dark** and **Kettle Light**, projected from the core
+product palette (`kettle-core/static/kettle-palette.json`). With a sibling core
+checkout:
+
+```sh
+npm run sync-palette    # regenerate themes/kettle-*-color-theme.json
+npm run check-palette   # fail if committed themes drift
+```
+
 ## Develop
 
 ```sh

@@ -527,6 +527,8 @@
   "scripts": {
     "sync-ui-copy": "node scripts/sync-ui-copy.mjs",
     "check-ui-copy": "node scripts/sync-ui-copy.mjs --check",
+    "sync-palette": "node scripts/sync-palette.mjs",
+    "check-palette": "node scripts/sync-palette.mjs --check",
     "compile": "tsc -p .",
     "watch": "tsc -watch -p .",
     "test": "npm run compile && node --test dist/test/*.test.js",
