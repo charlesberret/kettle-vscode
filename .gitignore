@@ -1,0 +1,15 @@
+# Local planning (not shipped)
+planning/
+
+node_modules/
+dist/
+out/
+*.vsix
+*.tsbuildinfo
+.DS_Store
+.idea/
+.env
+.env.*
+*.log
+.cache/
+coverage/

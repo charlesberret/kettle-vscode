@@ -1,0 +1,5 @@
+{
+  "api_versions": [0],
+  "desk_schema_versions": [0],
+  "allow_legacy_identity": false
+}

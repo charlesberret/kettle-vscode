@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none">
+  <!-- Match editor primary button (dark): button.background ≈ #0E639C -->
+  <circle cx="8" cy="8" r="7.25" fill="#0E639C"/>
+  <path d="M4.4 8.15l2.15 2.15 5-5" stroke="#FFFFFF" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
