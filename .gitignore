@@ -1,5 +1,5 @@
-# Local planning (not shipped)
-planning/
+# Local ops notes / agent handoffs (not shipped)
+.local/
 
 node_modules/
 dist/

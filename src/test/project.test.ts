@@ -12,51 +12,51 @@ import {
 } from "../project";
 
 const projects = [
-  { id: "career", name: "Career", root: "/Users/x/Seafile/Career" },
-  { id: "system", name: "System", root: "/Users/x/Seafile/System" },
+  { id: "career", name: "Career", root: "/Users/x/Sync/Career" },
+  { id: "system", name: "System", root: "/Users/x/Sync/System" },
   {
-    id: "charlesberret.net",
-    name: "charlesberret.net",
-    root: "/Users/x/cloud/git-projects/charlesberret.net",
+    id: "sample-site",
+    name: "Sample Site",
+    root: "/Users/x/Work/sample-site",
   },
 ];
 
 describe("resolveProjectId", () => {
   it("uses configured id when present", () => {
     assert.equal(
-      resolveProjectId(projects, "system", ["/Users/x/Seafile/Career"]),
+      resolveProjectId(projects, "system", ["/Users/x/Sync/Career"]),
       "system",
     );
   });
   it("returns undefined for unknown configured id", () => {
     assert.equal(
-      resolveProjectId(projects, "nope", ["/Users/x/Seafile/Career"]),
+      resolveProjectId(projects, "nope", ["/Users/x/Sync/Career"]),
       undefined,
     );
   });
   it("returns undefined for unknown configured id even with single project", () => {
     assert.equal(
-      resolveProjectId([projects[0]], "nope", ["/Users/x/Seafile/Career"]),
+      resolveProjectId([projects[0]], "nope", ["/Users/x/Sync/Career"]),
       undefined,
     );
   });
   it("matches single workspace folder under a project root", () => {
     assert.equal(
-      resolveProjectId(projects, "", ["/Users/x/Seafile/Career/JobMaterials"]),
+      resolveProjectId(projects, "", ["/Users/x/Sync/Career/JobMaterials"]),
       "career",
     );
   });
   it("matches exact project root", () => {
     assert.equal(
-      resolveProjectId(projects, "", ["/Users/x/Seafile/Career"]),
+      resolveProjectId(projects, "", ["/Users/x/Sync/Career"]),
       "career",
     );
   });
   it("returns undefined when multiple projects match", () => {
     assert.equal(
       resolveProjectId(projects, "", [
-        "/Users/x/Seafile/Career",
-        "/Users/x/Seafile/System",
+        "/Users/x/Sync/Career",
+        "/Users/x/Sync/System",
       ]),
       undefined,
     );
@@ -65,12 +65,12 @@ describe("resolveProjectId", () => {
     assert.equal(resolveProjectId([projects[0]], "", []), "career");
   });
   it("does NOT return sole project when workspace is a different folder", () => {
-    // The bug: Proteus open, only charlesberret.net registered → must not auto-bind.
+    // An unrelated open folder must not bind to the only registered project.
     assert.equal(
       resolveProjectId(
         [projects[2]],
         "",
-        ["/Users/x/cloud/git-projects/proteus"],
+        ["/Users/x/Work/other-project"],
       ),
       undefined,
     );
@@ -80,7 +80,7 @@ describe("resolveProjectId", () => {
       resolveProjectId(
         [projects[2]],
         "",
-        ["/Users/x/cloud/git-projects"],
+        ["/Users/x/Work"],
       ),
       undefined,
     );
@@ -90,66 +90,57 @@ describe("resolveProjectId", () => {
       resolveProjectId(
         [projects[2]],
         "",
-        ["/Users/x/cloud/git-projects/charlesberret.net"],
+        ["/Users/x/Work/sample-site"],
       ),
-      "charlesberret.net",
+      "sample-site",
     );
   });
 });
 
 describe("workspaceMatchesProject", () => {
   it("accepts root and descendants only", () => {
-    const root = "/Users/x/cloud/git-projects/proteus";
+    const root = "/Users/x/Work/sample-project";
     assert.equal(workspaceMatchesProject([root], root), true);
     assert.equal(workspaceMatchesProject([root + "/src"], root), true);
     assert.equal(
-      workspaceMatchesProject(["/Users/x/cloud/git-projects"], root),
+      workspaceMatchesProject(["/Users/x/Work"], root),
       false,
     );
     assert.equal(
       workspaceMatchesProject(
-        ["/Users/x/cloud/git-projects/charlesberret.net"],
+        ["/Users/x/Work/other-project"],
         root,
       ),
       false,
     );
   });
-  it("matches Repos spelling to the same realpath as git-projects when linked", () => {
-    // On this machine Repos → cloud/git-projects; skip if not linked.
+  it("matches a symlink alias to the same real project root", () => {
     const fs = require("node:fs") as typeof import("node:fs");
     const os = require("node:os") as typeof import("node:os");
     const path = require("node:path") as typeof import("node:path");
-    const repos = path.join(os.homedir(), "Repos");
-    const git = path.join(os.homedir(), "cloud/git-projects");
-    let same = false;
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), "kettle-project-"));
+    const actual = path.join(temp, "actual");
+    const alias = path.join(temp, "alias");
+    fs.mkdirSync(actual);
     try {
-      same = fs.realpathSync(repos) === fs.realpathSync(git);
+      fs.symlinkSync(actual, alias, "dir");
     } catch {
-      same = false;
+      fs.rmSync(temp, { recursive: true, force: true });
+      return;
     }
-    if (!same) return; // environment without the symlink
-    const desk = "charlesberret.net";
-    assert.equal(
-      workspaceMatchesProject(
-        [path.join(repos, desk)],
-        path.join(git, desk),
-      ),
-      true,
-    );
-    assert.equal(
-      workspaceMatchesProject(
-        [path.join(git, desk)],
-        path.join(repos, desk),
-      ),
-      true,
-    );
+    try {
+      assert.equal(workspaceMatchesProject([alias], actual), true);
+      assert.equal(workspaceMatchesProject([actual], alias), true);
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true });
+    }
   });
 });
 
 describe("nameFromRootPath", () => {
   it("title-cases basename and expands separators", () => {
     assert.equal(nameFromRootPath("/Users/x/my-notes"), "My Notes");
-    assert.equal(nameFromRootPath("/Users/x/charlesberret.net"), "Charlesberret.Net");
+    assert.equal(nameFromRootPath("/Users/x/sample_site"), "Sample Site");
     assert.equal(nameFromRootPath("/Users/x/foo_bar/"), "Foo Bar");
   });
   it("returns empty for blank", () => {
@@ -159,12 +150,12 @@ describe("nameFromRootPath", () => {
 
 describe("findProjectByRoot", () => {
   it("matches lexical root", () => {
-    const hit = findProjectByRoot(projects, "/Users/x/Seafile/Career");
+    const hit = findProjectByRoot(projects, "/Users/x/Sync/Career");
     assert.equal(hit?.id, "career");
   });
   it("returns undefined when unregistered", () => {
     assert.equal(
-      findProjectByRoot(projects, "/Users/x/cloud/git-projects/proteus"),
+      findProjectByRoot(projects, "/Users/x/Work/other-project"),
       undefined,
     );
   });
@@ -174,8 +165,8 @@ describe("entryDisplayPath", () => {
   it("strips project root prefix", () => {
     assert.equal(
       entryDisplayPath(
-        "/Users/x/Seafile/Career/target-companies.md",
-        "/Users/x/Seafile/Career",
+        "/Users/x/Sync/Career/target-companies.md",
+        "/Users/x/Sync/Career",
       ),
       "target-companies.md",
     );
@@ -183,8 +174,8 @@ describe("entryDisplayPath", () => {
   it("strips nested relative segments", () => {
     assert.equal(
       entryDisplayPath(
-        "/Users/x/Seafile/Career/docs/a.md",
-        "/Users/x/Seafile/Career",
+        "/Users/x/Sync/Career/docs/a.md",
+        "/Users/x/Sync/Career",
       ),
       "docs/a.md",
     );

@@ -306,7 +306,7 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
 
     if (!cacheHit) {
       notes.push(
-        "Cache miss — getChildren has not run (or list rebuilt). Expand SETSWEEP in Explorer so the tree materializes.",
+        "Cache miss — getChildren has not run (or list rebuilt). Expand KETTLE in Explorer so the tree materializes.",
       );
     }
     if (!treeViewPresent) {
@@ -314,7 +314,7 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
     }
     if (visible === false) {
       notes.push(
-        "TreeView reports visible=false — selection may apply but not be on-screen until SETSWEEP is expanded.",
+        "TreeView reports visible=false — selection may apply but not be on-screen until KETTLE is expanded.",
       );
     }
 

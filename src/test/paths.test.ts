@@ -55,7 +55,7 @@ describe("findEntryForEditorPath", () => {
     assert.equal(findEntryForEditorPath(fileReal, entries, realRoot)?.id, "2");
   });
 
-  it("matches via symlink root (Repos-style alias)", () => {
+  it("matches via a symlinked project root", () => {
     if (!linkRoot || !fs.existsSync(fileViaLink)) {
       // OS/environment without symlink support
       return;

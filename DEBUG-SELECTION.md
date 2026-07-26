@@ -22,7 +22,7 @@ Failure can be at **match** or **reveal**. Diagnose both separately.
 ## Command: Kettle: Debug
 
 1. Open a **queue file** in the editor (from Cursor’s file browser).
-2. Expand **Explorer → SETSWEEP** so the tree has loaded rows.
+2. Expand **Explorer → KETTLE** so the tree has loaded rows.
 3. Command Palette → **Kettle: Debug** (or click the status-bar Kettle item).
 4. Read **Output → Kettle Debug**, or:
 
@@ -60,10 +60,10 @@ If **`match id` is `(none)`** while the file is on the queue: fix path matching
 
 ### Failure modes (what we’ve hit)
 
-1. **Path miss** — entry stored under `Repos/…`, root is `cloud/git-projects/…`
-   (or reverse). Matching uses realpath; if still miss, probe rows show why.
-2. **Cache miss** — SETSWEEP section never expanded → `getChildren` never ran →
-   `reveal` has no host-known element. Expand SETSWEEP once.
+1. **Path miss** — entry and registry use different symlinked working roots.
+   Matching uses realpath; if it still misses, probe rows show why.
+2. **Cache miss** — KETTLE section never expanded → `getChildren` never ran →
+   `reveal` has no host-known element. Expand KETTLE once.
 3. **`getParent` missing** (confirmed 2026-07-22 on Cursor) — host throws:
    `Required registered TreeDataProvider to implement 'getParent' method to access 'reveal'`.
    Flat lists must implement `getParent` returning `undefined` for every row.
@@ -75,7 +75,7 @@ If **`match id` is `(none)`** while the file is on the queue: fix path matching
 ## Automated tests
 
 ```sh
-cd packages/vscode && npm test
+npm test
 ```
 
 - `src/test/paths.test.ts` — matching + symlink alias (when OS allows)

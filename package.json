@@ -3,8 +3,26 @@
   "displayName": "Kettle",
   "description": "Review desk for working with coding and writing agents \u2014 curated queue, approve, and sweep in VS Code and Cursor.",
   "version": "0.1.0",
+  "preview": true,
   "publisher": "charlesberret",
-  "private": true,
+  "license": "MIT",
+  "author": "Charles Berret",
+  "keywords": [
+    "agents",
+    "review",
+    "writing",
+    "curation",
+    "local-first"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Kettle starts a local core and reads or writes files in registered project roots."
+    }
+  },
   "engines": {
     "vscode": "^1.95.0"
   },
@@ -514,7 +532,7 @@
     "test": "npm run compile && node --test dist/test/*.test.js",
     "vscode:prepublish": "npm run compile",
     "prepackage": "npm run compile",
-    "package": "vsce package --no-dependencies --allow-missing-repository --skip-license --baseContentUrl https://github.com/charlesberret/kettle-plugin/raw/HEAD/packages/vscode --baseImagesUrl https://github.com/charlesberret/kettle-plugin/raw/HEAD/packages/vscode"
+    "package": "vsce package --no-dependencies --baseContentUrl https://github.com/charlesberret/kettle-vscode/raw/main --baseImagesUrl https://github.com/charlesberret/kettle-vscode/raw/main"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

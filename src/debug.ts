@@ -78,7 +78,7 @@ export function getIdentity(context: vscode.ExtensionContext): ExtensionIdentity
     extensionPath,
     main,
     isDevHost: /Extension Development Host/i.test(vscode.env.appName || ""),
-    isSymlinkHint: /kettle-dev|Repos\/kettle|link-dev/i.test(extensionPath),
+    isSymlinkHint: /kettle-dev|aliases\/kettle|link-dev/i.test(extensionPath),
     appName: vscode.env.appName || "vscode",
   };
 }
@@ -120,7 +120,7 @@ export function logActivate(context: vscode.ExtensionContext): ExtensionIdentity
   log(`log file          ${logFilePath()}`);
   if (!i.isSymlinkHint && !i.isDevHost) {
     log("NOTE: Installed VSIX snapshot (not link-dev). Workspace edits under");
-    log("      Repos/kettle-plugin apply only after package/install or link-dev.");
+    log("      Source changes apply only after package/install or link-dev.");
   }
   void vscode.window.setStatusBarMessage(`Kettle ${i.version} · ${i.buildId}`, 8000);
   return i;

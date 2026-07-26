@@ -58,8 +58,8 @@ export function isUnderKettleDesk(
 /**
  * Match an editor / Explorer fsPath to a queue entry.
  *
- * Core may store absolute paths under an alternate lexical root (Repos vs
- * cloud/git-projects). We try realpath equality, project-relative tails, and
+ * Core may store absolute paths under an alternate symlinked root. We try
+ * realpath equality, project-relative tails, and
  * unique basename as a last resort.
  */
 export function findEntryForEditorPath(

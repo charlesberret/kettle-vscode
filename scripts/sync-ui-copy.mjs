@@ -7,7 +7,7 @@
  * Resolution order:
  *   1. KETTLE_UI_COPY / SETSWEEP_UI_COPY (absolute path to ui-copy.js)
  *   2. KETTLE_SRC / SETSWEEP_SRC + /static/ui-copy.js
- *   3. Sibling checkouts: ../kettle, ../setsweep-core, …
+ *   3. Sibling checkouts: ../kettle-core, then legacy ../setsweep-core
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -30,22 +30,13 @@ function candidates() {
       list.push(path.join(process.env[env], "static", "ui-copy.js"));
     }
   }
-  // kettle-vscode next to kettle / setsweep-core
+  // kettle-vscode next to kettle-core (or a legacy setsweep-core checkout)
   list.push(
-    path.resolve(pkgRoot, "../kettle/static/ui-copy.js"),
+    path.resolve(pkgRoot, "../kettle-core/static/ui-copy.js"),
     path.resolve(pkgRoot, "../setsweep-core/static/ui-copy.js"),
-    path.resolve(pkgRoot, "../../kettle/static/ui-copy.js"),
+    path.resolve(pkgRoot, "../../kettle-core/static/ui-copy.js"),
     path.resolve(pkgRoot, "../../setsweep-core/static/ui-copy.js"),
   );
-  const home = process.env.HOME || "";
-  if (home) {
-    list.push(
-      path.join(home, "cloud/git-projects/kettle/static/ui-copy.js"),
-      path.join(home, "cloud/git-projects/setsweep-core/static/ui-copy.js"),
-      path.join(home, "Repos/kettle/static/ui-copy.js"),
-      path.join(home, "Repos/setsweep-core/static/ui-copy.js"),
-    );
-  }
   return list;
 }
 
@@ -71,7 +62,7 @@ function generate(copy) {
   });
   return `/**
  * AUTO-GENERATED — do not edit by hand.
- * Source: core static/ui-copy.js (kettle or setsweep-core)
+ * Source: kettle-core static/ui-copy.js (or legacy setsweep-core)
  * Regenerate: npm run sync-ui-copy
  *
  * Canonical sitting UI copy for the Desk webview.

@@ -1,51 +1,96 @@
-# Kettle for VS Code / Cursor
+# Kettle for VS Code and Cursor
 
-**Product home (star there):** [github.com/charlesberret/kettle](https://github.com/charlesberret/kettle)
+[Kettle](https://github.com/charlesberret/kettle) is a local-first review desk
+for work produced with coding and writing agents. This extension puts the
+curated queue, Desk panel, approvals, comments, and sweeps inside VS Code and
+Cursor.
 
-Editor viewport for **Kettle** — curated queue, Desk panel, approve / comment / sweep.
-Same extension for **VS Code** and **Cursor** (one VSIX).
-
-This repo is an **adapter**. Core, CLI, kits, and the reference web UI live in the
-[kettle](https://github.com/charlesberret/kettle) home repo (local: `../kettle`).
+The extension is an adapter. It talks to
+[`kettle-core`](https://github.com/charlesberret/kettle-core), which owns the
+project registry, on-disk Desk, HTTP contract, CLI, and reference web UI.
 
 ## Status
 
-Scaffold **0.1.0** lifted from the Setsweep VS Code package and rebranded. Still
-talks to a live core on `:4242` (accepts cores that identify as `kettle` *or*
-legacy `setsweep`). Desk paths prefer `.kettle/`, fall back to `.setsweep/`.
+**Pre-release (`0.1.0`).** The extension is usable from source and can be
+packaged as a VSIX. It is not yet published to the Visual Studio Marketplace.
 
-## Setup
+During the rename from Setsweep, Kettle prefers the new `kettle` command,
+`.kettle/` Desk, and Kettle registry. Existing `setsweep` processes,
+`.setsweep/` Desks, and legacy installs remain readable so a working setup is
+not split or stranded.
 
-1. Core: install from the kettle home repo when ready, or keep using setsweep-core
-   during transition (`~/.setsweep-venv` is still discovered).
-2. From this repo:
+## Prerequisites
+
+- VS Code 1.95+ or a compatible Cursor release
+- Node.js 20+
+- a local Kettle core installation; see the
+  [core quick start](https://github.com/charlesberret/kettle-core#quick-start)
+
+## Build and install
 
 ```sh
-npm install
+npm ci
 npm test
-npm run package   # → kettle-0.1.0.vsix
+npm run package
+```
+
+Install the generated `kettle-0.1.0.vsix`:
+
+```sh
+code --install-extension kettle-0.1.0.vsix --force
+# or
 cursor --install-extension kettle-0.1.0.vsix --force
 ```
 
-3. Reload the window. Command palette: **Kettle: …**
+Reload the editor, then open the command palette and run **Kettle: Ping Core**.
+By default the extension attaches to a healthy local core or starts `kettle`
+on port `4242`.
+
+If auto-start cannot locate the CLI, set `kettle.command` to its absolute path,
+for example `~/.kettle-venv/bin/kettle`.
 
 ## Develop
 
 ```sh
-npm install
+npm ci
 npm run compile
-# F5 — Extension Development Host (see .vscode/launch.json)
 ```
 
-UI-copy sync (when core tree exists):
+Press `F5` to launch an Extension Development Host. The tests exercise path
+matching, core discovery, compatibility checks, confirmation cards, activity
+state, and the shared Desk ritual rules:
 
 ```sh
-# KETTLE_SRC=../kettle npm run sync-ui-copy   # when wired
+npm test
 ```
 
-Local design notes: `planning/` (gitignored).
+Core owns the canonical visible copy used by every viewport. Refresh the
+generated TypeScript snapshot after changing `kettle-core/static/ui-copy.js`:
+
+```sh
+KETTLE_SRC=../kettle-core npm run sync-ui-copy
+npm run check-ui-copy
+```
+
+See [`DESK.md`](./DESK.md) for the viewport boundary and
+[`DEBUG.md`](./DEBUG.md) for live-host diagnostics.
+Release-facing changes are recorded in [`CHANGELOG.md`](./CHANGELOG.md).
+
+## Trust and data
+
+Kettle is workspace-scoped and does not run in untrusted workspaces. The
+extension can start a local core and can read or write files inside projects
+registered with that core. It does not bundle a model provider or send project
+data by itself; provider execution is configured in core.
+
+Please report vulnerabilities privately as described in
+[`SECURITY.md`](./SECURITY.md).
+
+## Contributing
+
+Bug reports and focused pull requests are welcome. Read
+[`CONTRIBUTING.md`](./CONTRIBUTING.md) before opening a change.
 
 ## License
 
-MIT — see the product home / upstream Setsweep lineage for full notices until
-LICENSE is finalized here.
+[MIT](./LICENSE)

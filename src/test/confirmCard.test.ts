@@ -8,7 +8,7 @@ import {
 
 const SAMPLE = `Short read
 
-Proteus is mid-flight.
+The sample project is mid-flight.
 
 ---
 
@@ -62,7 +62,7 @@ describe("looksLikeConfirmCard", () => {
 describe("parseConfirmCard", () => {
   it("parses sections and ticks; strips Other; empty elaborate for user", () => {
     const card = parseConfirmCard(SAMPLE);
-    assert.match(card.preamble, /Proteus is mid-flight/);
+    assert.match(card.preamble, /sample project is mid-flight/);
     assert.equal(card.sections.length, 4);
     assert.equal(card.sections[0].id, "status");
     assert.equal(card.sections[0].multi, false);

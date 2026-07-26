@@ -1,10 +1,9 @@
 /**
  * AUTO-GENERATED — do not edit by hand.
- * Source: kettle-core/static/ui-copy.js
- * Regenerate: npm run sync-ui-copy  (requires a kettle-core checkout)
+ * Source: kettle-core static/ui-copy.js (or legacy setsweep-core)
+ * Regenerate: npm run sync-ui-copy
  *
  * Canonical sitting UI copy for the Desk webview.
- * See kettle-core/docs/UI.md § Shared UI copy.
  */
 export const UI_COPY = {
   streamIdle: "Chat stream idle",

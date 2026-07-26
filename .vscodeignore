@@ -1,4 +1,6 @@
 .vscode/**
+.github/**
+.local/**
 src/**
 dist/test/**
 scripts/**
@@ -9,3 +11,8 @@ tsconfig.json
 *.vsix
 node_modules/**
 **/*.tsbuildinfo
+CONTRIBUTING.md
+SECURITY.md
+DEBUG.md
+DEBUG-SELECTION.md
+DESK.md

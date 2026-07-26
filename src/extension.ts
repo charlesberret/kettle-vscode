@@ -434,8 +434,8 @@ async function resolveProjectId(forcePick = false): Promise<string | undefined> 
     return undefined;
   }
   // Infer from workspace folders when unique path match (never “sole registered”).
-  // realpath matching: Cursor agent may open ~/Repos/foo while registry has
-  // ~/cloud/git-projects/foo (same directory).
+  // Realpath matching handles a host opening a symlink alias while the
+  // registry stores the canonical directory.
   if (!forcePick && projects.length) {
     const matched = matchProjectId(projects, "", folders);
     if (matched) {
@@ -861,8 +861,7 @@ function hostCliBinary(): string | undefined {
 /**
  * Spawn host CLI to open a folder or .code-workspace.
  * Use -n (new window) when leaving multi-root / a .code-workspace: -r no-ops
- * if the target path is nested under an already-open root (Repos → git-projects
- * → armada looks "already open" inside All-Projects.code-workspace).
+ * if the target path is nested under an already-open parent workspace.
  */
 function launchHostCli(
   targetPath: string,
@@ -1011,7 +1010,7 @@ async function openSoleProjectWorkspace(
  * kettleWorkspace mode (from dialog or settings).
  *
  * switchFolder opens a one-folder workspace under ~/.kettle/windows/ so VS Code
- * actually leaves multi-root parents (Repos+Seafile) and the fleet workspace.
+ * actually leaves multi-root parents and the current workspace.
  */
 async function ensureProjectFolderInWorkspace(
   root: string,
@@ -1848,7 +1847,7 @@ function projectRootInWorkspace(root: string): boolean {
 
 /**
  * True when this window is already a single-folder workspace rooted exactly
- * at `root` (not a parent multi-root like Repos → git-projects, and not the
+ * at `root` (not a broader parent workspace, and not the
  * multi-desk Kettle fleet). One-folder files under ~/.kettle/windows/ count.
  */
 function isSoleProjectWindow(root: string): boolean {
@@ -2415,7 +2414,7 @@ async function syncActiveFileToKettle(reason: string): Promise<void> {
  */
 async function runKettleDebug(): Promise<void> {
   debug.showDebugChannel();
-  debug.log("======== SETSWEEP DEBUG ========");
+  debug.log("======== KETTLE DEBUG ========");
   debug.logIdentitySnapshot();
 
   debug.log("—— connection ——");
@@ -2493,7 +2492,7 @@ async function runKettleDebug(): Promise<void> {
   }
 
   debug.log(`log file      ${debug.logFilePath()}`);
-  debug.log("======== END SETSWEEP DEBUG ========");
+  debug.log("======== END KETTLE DEBUG ========");
   void vscode.window.showInformationMessage(
     `Kettle debug written to Output channel and ${debug.logFilePath()}`,
   );

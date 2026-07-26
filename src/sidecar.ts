@@ -64,7 +64,7 @@ export function resolveKettleCommand(configured: string): string {
   return raw;
 }
 
-/** Core may still identify as setsweep until the home repo rename lands. */
+/** Accept the legacy identity during the compatibility window. */
 function isKettleFamilyApp(app: unknown): boolean {
   return app === "kettle" || app === "setsweep";
 }

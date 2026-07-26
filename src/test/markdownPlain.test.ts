@@ -11,11 +11,11 @@ import * as path from "node:path";
 describe("stripMarkdownToPlain", () => {
   it("removes bold markers used in PROJECT.md leads", () => {
     const s = stripMarkdownToPlain(
-      "Charles Berret's **personal portfolio site** — a live, deployed site.",
+      "The studio's **project handbook** — a live, deployed site.",
     );
     assert.equal(
       s,
-      "Charles Berret's personal portfolio site — a live, deployed site.",
+      "The studio's project handbook — a live, deployed site.",
     );
     assert.ok(!s.includes("**"));
   });
@@ -34,11 +34,11 @@ describe("projectSummarySentence", () => {
       fs.mkdirSync(path.join(dir, ".kettle"));
       fs.writeFileSync(
         path.join(dir, ".kettle", "PROJECT.md"),
-        "# Title\n\nCharles Berret's **personal portfolio site** — a live site.\n\nMore.\n",
+        "# Title\n\nThe studio's **project handbook** — a live site.\n\nMore.\n",
         "utf8",
       );
-      const out = projectSummarySentence(dir, "charlesberret.net");
-      assert.ok(out.includes("personal portfolio site"));
+      const out = projectSummarySentence(dir, "example-site");
+      assert.ok(out.includes("project handbook"));
       assert.ok(!out.includes("**"), out);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });

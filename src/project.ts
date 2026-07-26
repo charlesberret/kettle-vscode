@@ -3,8 +3,8 @@
  * Used by the extension shell and unit tests.
  *
  * Note: entry paths from core may use a different lexical root than the
- * registry (e.g. `~/Repos/foo` vs `~/cloud/git-projects/foo` when those are
- * the same directory). Display paths resolve via realpath when possible.
+ * registry when symlinked working roots point to the same directory. Display
+ * paths resolve via realpath when possible.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -39,12 +39,12 @@ export function expandUserPath(p: string): string {
  *
  * Matching rules (when unconfigured):
  * - Workspace folder is the project root, or a descendant of it (realpath).
- * - Repos vs cloud/git-projects spellings of the same directory match.
+ * - Symlinked spellings of the same directory match.
  * - Never pick a project merely because it is the only one registered — that
  *   silently loads the wrong desk when the open folder is unregistered (e.g.
- *   Proteus open, only charlesberret.net registered).
+ *   another folder open with only an unrelated project registered).
  * - Never match because the project root sits *under* a broader workspace
- *   folder (opening `git-projects/` must not auto-bind one child project).
+ *   folder (opening a shared parent must not auto-bind one child project).
  * - Sole registered project is only assumed when there are no workspace folders.
  */
 export function resolveProjectId(
@@ -77,8 +77,8 @@ export function resolveProjectId(
 
 /**
  * True when any workspace folder is this project's root or lives under it.
- * Uses realpath so Repos → git-projects and ~/… spellings of the same desk match
- * (Cursor agent often opens via one spelling while the registry stores another).
+ * Uses realpath so symlink aliases and expanded home paths for the same Desk
+ * match.
  */
 export function workspaceMatchesProject(
   workspaceFolderPaths: string[],
@@ -127,8 +127,8 @@ export function findProjectByRoot(
 
 /**
  * Relative path for queue labels. Prefer project-root-relative; fall back to
- * realpath match when registry root and entry path are different spellings of
- * the same directory (common with Repos/ ↔ cloud/git-projects/ links).
+ * realpath match when registry root and entry path are different symlinked
+ * spellings of the same directory.
  */
 export function entryDisplayPath(entryPath: string, projectRoot: string): string {
   const root = projectRoot.replace(/\/+$/, "");
@@ -145,7 +145,7 @@ export function entryDisplayPath(entryPath: string, projectRoot: string): string
   const lexical = strip(root, entryPath);
   if (lexical !== undefined) return lexical;
 
-  // Realpath pass (Repos → cloud/git-projects, etc.)
+  // Realpath pass for symlinked working roots.
   const realRoot = tryRealpath(root);
   let absEntry = path.isAbsolute(entryPath)
     ? entryPath
