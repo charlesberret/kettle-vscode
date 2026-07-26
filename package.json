@@ -268,124 +268,193 @@
         "path": "./themes/kettle-light-color-theme.json"
       }
     ],
-    "configuration": {
-      "title": "Kettle",
-      "properties": {
-        "kettle.provider": {
-          "type": "string",
-          "default": "",
-          "order": 1,
-          "enum": [
-            "",
-            "claude",
-            "grok",
-            "chatgpt",
-            "gemini",
-            "cli"
-          ],
-          "enumDescriptions": [
-            "Use whatever core currently has selected (no override from the editor)",
-            "Claude Code CLI",
-            "Grok Build CLI (Cursor-adjacent models like grok-4.5)",
-            "OpenAI Codex CLI (chatgpt)",
-            "Google Gemini CLI",
-            "Custom stream-json CLI"
-          ],
-          "markdownDescription": "**Curator provider** \u2014 which agent CLI runs chat, sweeps, and founding. Empty = leave core\u2019s current selection alone until you change it here or on the Desk model pill. Synced to core via `POST /api/curator`."
-        },
-        "kettle.chatModel": {
-          "type": "string",
-          "default": "",
-          "order": 2,
-          "markdownDescription": "**Chat / sweep model id** for the active provider (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core\u2019s current chat model. Also controlled by the Desk model pill. Must be an id that provider accepts."
-        },
-        "kettle.setupModel": {
-          "type": "string",
-          "default": "",
-          "order": 3,
-          "markdownDescription": "**Setup / founding model id** (interview, propose, refresh-briefs). Empty = use core\u2019s current setup model (or match chat when you set provider)."
-        },
-        "kettle.effort": {
-          "type": "string",
-          "default": "",
-          "order": 4,
-          "enum": [
-            "",
-            "default",
-            "low",
-            "medium",
-            "high",
-            "max"
-          ],
-          "markdownDescription": "Reasoning **effort** passed to providers that support it (Claude, Grok, Codex). Empty = core default."
-        },
-        "kettle.serverUrl": {
-          "type": "string",
-          "default": "",
-          "order": 10,
-          "markdownDescription": "Address of the local Kettle server. Usually left empty \u2014 a running server is found automatically. Set only if yours listens somewhere unusual."
-        },
-        "kettle.project": {
-          "type": "string",
-          "default": "",
-          "order": 11,
-          "scope": "resource",
-          "markdownDescription": "The Kettle project this window works in. Usually left empty \u2014 the open folder is matched to a registered project automatically. Set it per-workspace when the match is ambiguous."
-        },
-        "kettle.confirmSweep": {
-          "type": "boolean",
-          "default": true,
-          "order": 20,
-          "markdownDescription": "Ask before a sweep closes the sitting. A sweep applies approved work, writes the session log, and restocks the queue."
-        },
-        "kettle.confirmApprove": {
-          "type": "boolean",
-          "default": true,
-          "order": 21,
-          "markdownDescription": "Ask before bookmarking an approval. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approvals still do not commit \u2014 Sweep does."
-        },
-        "kettle.openNextOnApprove": {
-          "type": "boolean",
-          "default": true,
-          "order": 22,
-          "markdownDescription": "After approving a queue entry, select and open the next pending entry (approved rows move to the bottom of the Kettle queue list)."
-        },
-        "kettle.autoStartServer": {
-          "type": "boolean",
-          "default": true,
-          "order": 30,
-          "markdownDescription": "When no Kettle core is reachable, start one automatically on the live port (`:4242`). **On by default** \u2014 opening the plugin launches core. Turn off only for attach-only debugging. A shared `:4242` core is not killed when the editor closes."
-        },
-        "kettle.command": {
-          "type": "string",
-          "default": "kettle",
-          "order": 31,
-          "markdownDescription": "CLI used to start core. Empty/`kettle` resolves `~/.kettle-venv/bin/kettle` when present, then PATH. Absolute path recommended if auto-start fails."
-        },
-        "kettle.focusDeskOnActivate": {
-          "type": "boolean",
-          "default": true,
-          "order": 32,
-          "markdownDescription": "When the extension activates, focus **Kettle Desk** in the Secondary Side Bar (left in Cursor, right in default VS Code). Brings the sitting forward over peer tabs such as Agent; does not remove those tabs. Turn off if you prefer Agent (or another view) to stay selected."
-        },
-        "kettle.projectSwitchMode": {
-          "type": "string",
-          "default": "ask",
-          "order": 12,
-          "enum": [
-            "ask",
-            "switchFolder",
-            "kettleWorkspace"
-          ],
-          "enumDescriptions": [
-            "Ask each time a selected desk is outside the current window folder",
-            "Always open only that project\u2019s folder (reloads the window; light)",
-            "Always use the multi-root Kettle workspace (~/.kettle/Kettle.code-workspace) with registered desks (can get heavy)"
-          ],
-          "markdownDescription": "When you pick a Kettle project that isn\u2019t this window\u2019s folder: **switch** to a single-project window, use the shared **Kettle** multi-root workspace, or **ask**. The multi-root workspace can get heavy with many large repos \u2014 change this anytime here."
+    "configuration": [
+      {
+        "title": "Kettle",
+        "order": 0,
+        "properties": {
+          "kettle.provider": {
+            "type": "string",
+            "default": "",
+            "order": 1,
+            "enum": [
+              "",
+              "claude",
+              "grok",
+              "chatgpt",
+              "gemini",
+              "cli"
+            ],
+            "enumDescriptions": [
+              "Use whatever core currently has selected (no override from the editor)",
+              "Claude Code CLI",
+              "Grok Build CLI (Cursor-adjacent models like grok-4.5)",
+              "OpenAI Codex CLI (chatgpt)",
+              "Google Gemini CLI",
+              "Custom stream-json CLI"
+            ],
+            "markdownDescription": "**Curator provider** \u2014 which agent CLI runs chat, sweeps, and founding. Empty = leave core\u2019s current selection alone until you change it here or on the Desk model pill. Synced to core via `POST /api/curator`."
+          },
+          "kettle.chatModel": {
+            "type": "string",
+            "default": "",
+            "order": 2,
+            "markdownDescription": "**Chat / sweep model id** for the active provider (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core\u2019s current chat model. Also controlled by the Desk model pill. Must be an id that provider accepts."
+          },
+          "kettle.setupModel": {
+            "type": "string",
+            "default": "",
+            "order": 3,
+            "markdownDescription": "**Setup / founding model id** (interview, propose, refresh-briefs). Empty = use core\u2019s current setup model (or match chat when you set provider)."
+          },
+          "kettle.effort": {
+            "type": "string",
+            "default": "",
+            "order": 4,
+            "enum": [
+              "",
+              "default",
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
+            ],
+            "enumDescriptions": [
+              "Use whatever core currently has selected (no override from the editor)",
+              "Provider default \u2014 no explicit effort flag",
+              "low",
+              "medium",
+              "high",
+              "Extra-high \u2014 Claude Code, Grok Build CLI, custom CLI, and Codex",
+              "max \u2014 not offered by Grok or Gemini",
+              "Highest available \u2014 Codex (ChatGPT) only"
+            ],
+            "markdownDescription": "Reasoning **effort** passed to providers that support it. Ladders differ by provider \u2014 Claude/custom CLI go low\u2026max plus `xhigh`; Grok stops at `xhigh` (no `max`); Codex adds `ultra` above `max`; Gemini ignores this setting entirely. Empty = core default."
+          }
+        }
+      },
+      {
+        "title": "Kettle \u203a Project",
+        "order": 1,
+        "properties": {
+          "kettle.project": {
+            "type": "string",
+            "default": "",
+            "order": 11,
+            "scope": "resource",
+            "markdownDescription": "The Kettle project this window works in. Usually left empty \u2014 the open folder is matched to a registered project automatically. Set it per-workspace when the match is ambiguous."
+          },
+          "kettle.projectSwitchMode": {
+            "type": "string",
+            "default": "ask",
+            "order": 12,
+            "enum": [
+              "ask",
+              "switchFolder",
+              "kettleWorkspace"
+            ],
+            "enumDescriptions": [
+              "Ask each time a selected desk is outside the current window folder",
+              "Always open only that project\u2019s folder (reloads the window; light)",
+              "Always use the multi-root Kettle workspace (~/.kettle/Kettle.code-workspace) with registered desks (can get heavy)"
+            ],
+            "markdownDescription": "When you pick a Kettle project that isn\u2019t this window\u2019s folder: **switch** to a single-project window, use the shared **Kettle** multi-root workspace, or **ask**. The multi-root workspace can get heavy with many large repos \u2014 change this anytime here."
+          }
+        }
+      },
+      {
+        "title": "Kettle \u203a Workflow",
+        "order": 2,
+        "properties": {
+          "kettle.confirmSweep": {
+            "type": "boolean",
+            "default": true,
+            "order": 20,
+            "markdownDescription": "Ask before a sweep closes the sitting. A sweep applies approved work, writes the session log, and restocks the queue."
+          },
+          "kettle.confirmApprove": {
+            "type": "boolean",
+            "default": true,
+            "order": 21,
+            "markdownDescription": "Ask before bookmarking an approval. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approvals still do not commit \u2014 Sweep does."
+          },
+          "kettle.openNextOnApprove": {
+            "type": "boolean",
+            "default": true,
+            "order": 22,
+            "markdownDescription": "After approving a queue entry, select and open the next pending entry (approved rows move to the bottom of the Kettle queue list)."
+          },
+          "kettle.autoSweepOnQueueDone": {
+            "type": "boolean",
+            "default": false,
+            "order": 23,
+            "markdownDescription": "Once every entry in the queue is approved or sent back for rework (none left pending), run **Sweep** automatically instead of waiting for a manual click. Still gated by `kettle.confirmSweep`. Independent of core's own Auto-Sweep toggle in the Desk web admin panel."
+          },
+          "kettle.sweepVerbosity": {
+            "type": "string",
+            "default": "",
+            "order": 24,
+            "enum": [
+              "",
+              "quiet",
+              "normal",
+              "verbose"
+            ],
+            "enumDescriptions": [
+              "Use whatever core currently has selected (no override from the editor)",
+              "Minimal narration \u2014 just a recap when the sweep finishes",
+              "Report meaningful progress as the sweep runs (core's default)",
+              "Detailed step-by-step narration during the sweep"
+            ],
+            "markdownDescription": "How talkative the curator is while a **sweep** runs (diff \u2192 assess \u2192 ripple \u2192 learn). This is a core-wide preference \u2014 changing it here also affects sweeps run from the Desk web UI or CLI. Empty = leave core's current value."
+          }
+        }
+      },
+      {
+        "title": "Kettle \u203a Connection & Startup",
+        "order": 3,
+        "properties": {
+          "kettle.serverUrl": {
+            "type": "string",
+            "default": "",
+            "order": 10,
+            "markdownDescription": "Address of the local Kettle server. Usually left empty \u2014 a running server is found automatically. Set only if yours listens somewhere unusual."
+          },
+          "kettle.autoStartServer": {
+            "type": "boolean",
+            "default": true,
+            "order": 30,
+            "markdownDescription": "When no Kettle core is reachable, start one automatically on the live port (`:4242`). **On by default** \u2014 opening the plugin launches core. Turn off only for attach-only debugging. A shared `:4242` core is not killed when the editor closes."
+          },
+          "kettle.command": {
+            "type": "string",
+            "default": "kettle",
+            "order": 31,
+            "markdownDescription": "CLI used to start core. Empty/`kettle` resolves `~/.kettle-venv/bin/kettle` when present, then PATH. Absolute path recommended if auto-start fails."
+          },
+          "kettle.focusDeskOnActivate": {
+            "type": "boolean",
+            "default": true,
+            "order": 32,
+            "markdownDescription": "When the extension activates, focus **Kettle Desk** in the Secondary Side Bar (left in Cursor, right in default VS Code). Brings the sitting forward over peer tabs such as Agent; does not remove those tabs. Turn off if you prefer Agent (or another view) to stay selected."
+          }
+        }
+      },
+      {
+        "title": "Kettle \u203a Diagnostics",
+        "order": 4,
+        "properties": {
+          "kettle.logToFile": {
+            "type": "boolean",
+            "default": true,
+            "order": 40,
+            "markdownDescription": "Mirror Kettle's diagnostic log to `~/.cache/kettle/plugin-debug.log` in addition to the **Kettle Debug** Output channel. Turn off to keep diagnostics in this VS Code session only."
+          }
         }
       }
-    },
+    ],
     "chatParticipants": [
       {
         "id": "kettle.chat",

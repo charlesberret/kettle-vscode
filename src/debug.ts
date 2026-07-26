@@ -56,7 +56,17 @@ function ensureLogFile(): void {
   }
 }
 
+/** kettle.logToFile — default on; lets users opt out of the on-disk mirror. */
+function fileLoggingEnabled(): boolean {
+  try {
+    return vscode.workspace.getConfiguration("kettle").get<boolean>("logToFile", true);
+  } catch {
+    return true;
+  }
+}
+
 function appendLogFile(line: string): void {
+  if (!fileLoggingEnabled()) return;
   try {
     ensureLogFile();
     fs.appendFileSync(logFilePath(), line + "\n", "utf8");

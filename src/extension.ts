@@ -102,6 +102,20 @@ function cfgEffort(): string {
   return (vscode.workspace.getConfiguration("kettle").get<string>("effort") || "").trim();
 }
 
+/** Live-stream narration verbosity during a sweep (empty = leave core's current value). */
+function cfgSweepVerbosity(): string {
+  return (
+    vscode.workspace.getConfiguration("kettle").get<string>("sweepVerbosity") || ""
+  ).trim();
+}
+
+/** Auto-trigger Sweep once every queue entry is approved/rework (default off). */
+function cfgAutoSweepOnQueueDone(): boolean {
+  return vscode.workspace
+    .getConfiguration("kettle")
+    .get<boolean>("autoSweepOnQueueDone", false);
+}
+
 /** True while we write editor settings from core (avoid re-push loops). */
 let syncingCuratorFromCore = false;
 
@@ -149,6 +163,23 @@ async function pushCuratorSettingsToCore(): Promise<void> {
     );
     void vscode.window.showErrorMessage(
       formatErr("Could not apply curator settings to Kettle core", e),
+    );
+  }
+}
+
+/**
+ * Push kettle.sweepVerbosity → core's settings.json (shared with the Desk web UI
+ * and CLI — sweep narration is a core-wide preference, not per-client).
+ * Empty = don't override core's current value.
+ */
+async function pushBehaviorSettingsToCore(): Promise<void> {
+  const sweepVerbosity = cfgSweepVerbosity();
+  if (!sweepVerbosity) return;
+  try {
+    await (await api()).patchSettings({ sweepVerbosity });
+  } catch (e) {
+    debug.log(
+      `pushBehaviorSettingsToCore failed: ${e instanceof Error ? e.message : e}`,
     );
   }
 }
@@ -2129,6 +2160,28 @@ async function saveDirtyProposalDocument(
   }
 }
 
+/** True while an auto-sweep triggered by kettle.autoSweepOnQueueDone is in flight. */
+let autoSweepInFlight = false;
+
+/**
+ * kettle.autoSweepOnQueueDone — once every queue entry is approved/rework (none
+ * left pending), run Sweep automatically instead of waiting for a manual click.
+ * Reuses the kettle.sweep command so kettle.confirmSweep still gates it.
+ */
+async function maybeAutoSweepOnQueueDone(): Promise<void> {
+  if (!cfgAutoSweepOnQueueDone() || autoSweepInFlight) return;
+  const entries = state.getEntries();
+  if (!entries.length) return;
+  const allResolved = entries.every((e) => e.status === "approved" || e.status === "rework");
+  if (!allResolved) return;
+  autoSweepInFlight = true;
+  try {
+    await vscode.commands.executeCommand("kettle.sweep");
+  } finally {
+    autoSweepInFlight = false;
+  }
+}
+
 async function approveEntry(entry: QueueEntry): Promise<void> {
   const projectId = state.getProjectId() || (await resolveProjectId());
   if (!projectId) return;
@@ -2156,6 +2209,7 @@ async function approveEntry(entry: QueueEntry): Promise<void> {
       return;
     }
     await refreshQueue();
+    void maybeAutoSweepOnQueueDone();
     // Queue view re-sorts: approved last, muted/strikethrough via decorations.
     if (cfgOpenNextOnApprove()) {
       const next = nextPendingEntry(state.getEntries(), approvedId);
@@ -2570,6 +2624,7 @@ export function activate(context: vscode.ExtensionContext): void {
     try {
       await pullCuratorSettingsFromCore();
       await pushCuratorSettingsToCore();
+      await pushBehaviorSettingsToCore();
     } catch {
       /* core may not be up yet — Desk ready will retry via refresh */
     }
@@ -2740,6 +2795,9 @@ export function activate(context: vscode.ExtensionContext): void {
         e.affectsConfiguration("kettle.effort")
       ) {
         void pushCuratorSettingsToCore();
+      }
+      if (e.affectsConfiguration("kettle.sweepVerbosity")) {
+        void pushBehaviorSettingsToCore();
       }
       // Dampen Desk ritual buttons when the user zooms the workbench
       // (Cmd/Ctrl +/= or window.zoomLevel) so they don't balloon on small screens.

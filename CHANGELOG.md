@@ -9,6 +9,15 @@
 - Local core discovery and auto-start with compatibility validation.
 - Shared visible-copy drift check against `kettle-core`.
 - Packageable VSIX, CI, contribution guidance, and security policy.
+- Settings reorganized into grouped sections (Agents & Models, Project,
+  Workflow, Connection & Startup, Diagnostics) in the native Settings UI.
+- `kettle.effort` now covers the full per-provider ladder, including `xhigh`
+  and `ultra`.
+- `kettle.sweepVerbosity` (quiet/normal/verbose), synced to core's own
+  sweep-narration setting.
+- `kettle.autoSweepOnQueueDone` to run Sweep automatically once the queue has
+  no pending entries left.
+- `kettle.logToFile` to opt out of the on-disk diagnostics mirror.
 
 ### Compatibility
 
