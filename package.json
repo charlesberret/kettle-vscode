@@ -1,7 +1,7 @@
 {
   "name": "kettle",
   "displayName": "Kettle",
-  "description": "Review desk for working with coding and writing agents \u2014 curated queue, approve, and sweep in VS Code and Cursor.",
+  "description": "Local-first review desk for coding and writing agent work in VS Code and Cursor.",
   "version": "0.1.0",
   "preview": true,
   "publisher": "charlesberret",
@@ -164,7 +164,7 @@
       "secondarySidebar": [
         {
           "id": "kettle-desk",
-          "title": "Kettle Desk",
+          "title": "KETTLE",
           "icon": "$(checklist)"
         }
       ]
@@ -182,8 +182,8 @@
         {
           "type": "webview",
           "id": "kettle.deskPanel",
-          "name": "Desk",
-          "contextualTitle": "Kettle Desk",
+          "name": "KETTLE",
+          "contextualTitle": "KETTLE",
           "visibility": "visible"
         }
       ]

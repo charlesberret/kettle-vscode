@@ -4,7 +4,8 @@
  * ## Layout (top → bottom)
  * 1. **Header** — project selector + settings gear, then entry path.
  *    Path click opens the file. Status/urgency/version chrome stays out of the panel.
- * 2. **Brief** — curator ask + brief for the selected queue entry.
+ * 2. **Brief pane** — curator ask + brief for the selected queue entry
+ *    (no "Brief" title; small info control explains the pane).
  * 3. **Ritual actions** — decision-first **Approve · Comment · Sweep** (side-agnostic;
  *    left-aligned, gap collapses as the panel narrows). Unfounded desks use the host
  *    toast / command palette to begin interview — not a fourth ritual button.
@@ -1536,6 +1537,63 @@ function shellHtml(): string {
     font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
     color: var(--muted); font-weight: 600; margin: 0 0 6px;
   }
+  /* Brief pane: no title chrome — small info control only. */
+  .brief-sec {
+    position: relative;
+    padding-right: 28px; /* room for the corner info button */
+  }
+  .brief-info-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--border) 80%, var(--muted));
+    background: color-mix(in srgb, var(--bg) 70%, transparent);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    font-style: italic;
+    font-family: var(--font);
+    line-height: 1;
+    justify-content: center;
+    z-index: 2;
+  }
+  .brief-info-btn:hover:not(:disabled),
+  .brief-info-btn[aria-expanded="true"] {
+    color: var(--fg);
+    border-color: color-mix(in srgb, var(--vscode-textLink-foreground, #4daafc) 45%, var(--border));
+    background: color-mix(in srgb, var(--vscode-textLink-foreground, #4daafc) 12%, var(--bg));
+  }
+  .brief-info-tip {
+    display: none;
+    position: absolute;
+    top: 30px;
+    right: 8px;
+    left: 12px;
+    z-index: 5;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--vscode-editorWidget-background, var(--bg));
+    color: var(--fg);
+    box-shadow: 0 4px 14px color-mix(in srgb, #000 22%, transparent);
+    font-size: 11.5px;
+    font-weight: 400;
+    line-height: 1.45;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .brief-info-tip.open { display: block; }
+  .brief-info-tip strong {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 0 0 4px;
+    color: var(--fg);
+  }
   /* Brief summary sits under the ask — smaller / quieter so the ask leads. */
   .brief { font-size: 13px; line-height: 1.5; color: color-mix(in srgb, var(--fg) 82%, transparent); }
   .brief h3, .brief h4 { font-size: 13px; margin: 0.6em 0 0.25em; font-weight: 600; color: var(--fg); }
@@ -1899,7 +1957,15 @@ function shellHtml(): string {
   </div>
 
   <section class="section brief-sec">
-    <div class="section-label">Brief</div>
+    <button type="button" class="brief-info-btn" id="btnBriefInfo"
+      aria-label="About this brief" aria-expanded="false" aria-controls="briefInfoTip"
+      title="About this brief">i</button>
+    <div class="brief-info-tip" id="briefInfoTip" role="note" hidden>
+      <strong>What is this?</strong>
+      A short orientation for the open queue file: what it is, what to look for,
+      and a plain-English ask. Your curator writes it when the queue is stocked
+      or briefs are refreshed, so you can re-enter cold without rereading the whole document.
+    </div>
     <div class="takeaway" id="takeaway" hidden></div>
     <div class="brief" id="brief"><p class="muted">Select a project to begin.</p></div>
   </section>
@@ -2682,6 +2748,41 @@ function shellHtml(): string {
   });
 
   $("btnApprove").addEventListener("click", function() { post("approve"); });
+
+  // Brief info: tiny "i" — no section title chrome.
+  function setBriefInfoOpen(open) {
+    const tip = $("briefInfoTip");
+    const btn = $("btnBriefInfo");
+    if (!tip || !btn) return;
+    if (open) {
+      tip.hidden = false;
+      tip.removeAttribute("hidden");
+      tip.classList.add("open");
+      btn.setAttribute("aria-expanded", "true");
+    } else {
+      tip.classList.remove("open");
+      tip.hidden = true;
+      tip.setAttribute("hidden", "");
+      btn.setAttribute("aria-expanded", "false");
+    }
+  }
+  $("btnBriefInfo").addEventListener("click", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = $("btnBriefInfo").getAttribute("aria-expanded") !== "true";
+    setBriefInfoOpen(open);
+  });
+  document.addEventListener("mousedown", function(e) {
+    const tip = $("briefInfoTip");
+    const btn = $("btnBriefInfo");
+    if (!tip || !btn || btn.getAttribute("aria-expanded") !== "true") return;
+    const t = e.target;
+    if (tip.contains(t) || btn.contains(t)) return;
+    setBriefInfoOpen(false);
+  }, true);
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape") setBriefInfoOpen(false);
+  });
 
   // Comment: toggle drawer (not a permanent second essay box).
   $("btnCommentToggle").addEventListener("click", function() {

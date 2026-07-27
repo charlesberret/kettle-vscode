@@ -14,4 +14,4 @@ suggested mitigation. Please avoid including private project data in reports.
 The extension starts and communicates with a loopback-only Kettle core. Reports
 about core authorization, project-root boundaries, provider execution, or the
 HTTP API may belong in
-[`kettle-core`](https://github.com/charlesberret/kettle-core/security).
+[`kettle-core`](https://github.com/charlesberret/kettle-core/security/advisories/new).

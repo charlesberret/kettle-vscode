@@ -39,3 +39,12 @@ body:
     attributes:
       label: Diagnostics
       description: Paste relevant Kettle Debug output after removing private paths or project data.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, private Desk content, and personal paths.
+          required: true
+        - label: This is not a vulnerability report; I will follow SECURITY.md for those.
+          required: true
