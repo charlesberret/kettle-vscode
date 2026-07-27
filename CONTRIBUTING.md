@@ -21,7 +21,7 @@ npm ci
 npm test
 ```
 
-For live-host work, press `F5` in VS Code and follow [`DEBUG.md`](./DEBUG.md).
+For live-host work, press `F5` in VS Code and follow [`DEBUG.md`](./docs/DEBUG.md).
 
 If a change affects user-visible copy shared with core, edit
 `kettle-core/static/ui-copy.js` first and then run:
@@ -39,4 +39,5 @@ npm run check-ui-copy
 - Do not commit generated VSIX files, `dist/`, or `node_modules/`.
 
 By contributing, you agree that your contribution is licensed under the
-[MIT License](./LICENSE).
+[MIT License](./LICENSE). Participation is governed by the
+[Kettle code of conduct](https://github.com/charlesberret/kettle/blob/main/CODE_OF_CONDUCT.md).

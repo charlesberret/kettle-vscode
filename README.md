@@ -83,8 +83,8 @@ KETTLE_SRC=../kettle-core npm run sync-ui-copy
 npm run check-ui-copy
 ```
 
-See [`DESK.md`](./DESK.md) for the viewport boundary and
-[`DEBUG.md`](./DEBUG.md) for live-host diagnostics.
+See [`DESK.md`](./docs/DESK.md) for the viewport boundary and
+[`DEBUG.md`](./docs/DEBUG.md) for live-host diagnostics.
 Release-facing changes are recorded in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Trust and data
