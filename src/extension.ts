@@ -14,6 +14,7 @@ import {
 import { registerKettleParticipant } from "./chat/participant";
 import { registerKettleTools } from "./chat/tools";
 import * as debug from "./debug";
+import { DebugPanelProvider } from "./debugPanel";
 import { DeskPanelProvider } from "./deskPanel";
 import { resolveCoreBaseUrl } from "./discover";
 import {
@@ -57,9 +58,35 @@ import { UI_COPY } from "./uiCopy";
 
 let cached: { baseUrl: string; api: KettleApi } | null = null;
 let deskPanel: DeskPanelProvider | undefined;
+let debugPanel: DebugPanelProvider | undefined;
 let queueView: QueueTreeProvider | undefined;
 let statusItem: vscode.StatusBarItem | undefined;
 let sidecar: SidecarState | undefined;
+
+// The status bar item already carries connection state (connecting/connected/
+// disconnected — see invalidateApi() / touchConnection() / kettle.ping). The
+// error badge composes on top of that base text/tooltip rather than
+// overwriting it, so a logged error doesn't erase "connected on :4242".
+let statusBaseText = "$(circle-outline) Kettle";
+let statusBaseTooltip = "";
+
+/** Set the connection-state part of the status bar item (badge composes on top). */
+function setStatusBarBase(text: string, tooltip?: string): void {
+  statusBaseText = text;
+  if (tooltip !== undefined) statusBaseTooltip = tooltip;
+  renderStatusBar();
+}
+
+/** Repaint the status bar item: base connection text + error badge, if any. */
+function renderStatusBar(): void {
+  if (!statusItem) return;
+  const errors = debug.errorCount();
+  statusItem.text = errors > 0 ? `${statusBaseText} $(warning)${errors}` : statusBaseText;
+  const clickHint = "(click: Debug Panel)";
+  statusItem.tooltip = errors > 0
+    ? `${statusBaseTooltip} — ${errors} error${errors === 1 ? "" : "s"} logged ${clickHint}`
+    : `${statusBaseTooltip} ${clickHint}`;
+}
 
 // Settings, with one-release fallback reads of the pre-0.3 keys (baseUrl, projectId).
 function cfgServerUrl(): string {
@@ -158,11 +185,8 @@ async function pushCuratorSettingsToCore(): Promise<void> {
     }
     deskPanel?.refresh();
   } catch (e) {
-    debug.log(
-      `pushCuratorSettingsToCore failed: ${e instanceof Error ? e.message : e}`,
-    );
     void vscode.window.showErrorMessage(
-      formatErr("Could not apply curator settings to Kettle core", e),
+      reportError("Could not apply curator settings to Kettle core", e),
     );
   }
 }
@@ -360,7 +384,7 @@ async function api(): Promise<KettleApi> {
 function invalidateApi(): void {
   cached = null;
   state.setConnected(false, "Kettle · disconnected");
-  statusItem && (statusItem.text = "$(debug-disconnect) Kettle");
+  setStatusBarBase("$(debug-disconnect) Kettle", "Kettle · disconnected");
 }
 
 async function touchConnection(): Promise<boolean> {
@@ -368,10 +392,7 @@ async function touchConnection(): Promise<boolean> {
     const a = await api();
     const p = await a.ping();
     state.setConnected(true, `Kettle · :${p.port}`);
-    if (statusItem) {
-      statusItem.text = `$(check) Kettle :${p.port}`;
-      statusItem.tooltip = `Core pid ${p.pid} · ${cached?.baseUrl}`;
-    }
+    setStatusBarBase(`$(check) Kettle :${p.port}`, `Core pid ${p.pid} · ${cached?.baseUrl}`);
     // Drop legacy "glance" model role from core settings (removed product surface).
     void stripGlanceFromCoreSettings(a);
     return true;
@@ -410,6 +431,17 @@ function formatErr(prefix: string, e: unknown): string {
   if (e instanceof KettleApiError) return `${prefix}: ${e.message}`;
   if (e instanceof Error) return `${prefix}: ${e.message}`;
   return `${prefix}: ${String(e)}`;
+}
+
+/**
+ * Formats (when `e` is given) or passes through a user-facing error message,
+ * logs it to debug's ring so it lands in the Kettle Debug panel/report, and
+ * returns it for `showErrorMessage`. Every error toast should go through this.
+ */
+function reportError(prefix: string, e?: unknown): string {
+  const msg = e === undefined ? prefix : formatErr(prefix, e);
+  debug.log(msg);
+  return msg;
 }
 
 function entryLabel(e: QueueEntry): string {
@@ -461,7 +493,7 @@ async function resolveProjectId(forcePick = false): Promise<string | undefined> 
     ({ projects } = await (await api()).projects());
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Could not list projects", e));
+    void vscode.window.showErrorMessage(reportError("Could not list projects", e));
     return undefined;
   }
   // Infer from workspace folders when unique path match (never “sole registered”).
@@ -566,7 +598,7 @@ async function registerNewProject(): Promise<string | undefined> {
     ({ projects } = await (await api()).projects());
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Could not list projects", e));
+    void vscode.window.showErrorMessage(reportError("Could not list projects", e));
     return undefined;
   }
 
@@ -619,18 +651,20 @@ async function registerNewProject(): Promise<string | undefined> {
         };
       } catch (e2) {
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Register project failed", e2));
+        void vscode.window.showErrorMessage(reportError("Register project failed", e2));
         return undefined;
       }
     } else {
       invalidateApi();
-      void vscode.window.showErrorMessage(formatErr("Register project failed", e));
+      void vscode.window.showErrorMessage(reportError("Register project failed", e));
       return undefined;
     }
   }
 
   if (!project?.id) {
-    void vscode.window.showErrorMessage("Register project failed: no project id returned.");
+    void vscode.window.showErrorMessage(
+      reportError("Register project failed: no project id returned."),
+    );
     return undefined;
   }
 
@@ -1640,7 +1674,7 @@ async function bindProjectById(projectId: string): Promise<string | undefined> {
     return bindProject(p);
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Could not bind project", e));
+    void vscode.window.showErrorMessage(reportError("Could not bind project", e));
     return undefined;
   }
 }
@@ -1693,7 +1727,7 @@ async function refreshQueue(): Promise<void> {
     updateEditorContext();
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Could not load queue", e));
+    void vscode.window.showErrorMessage(reportError("Could not load queue", e));
   }
 }
 
@@ -1785,7 +1819,7 @@ async function beginFounding(): Promise<void> {
     debug.logDesk("interview.error", e instanceof Error ? e.message : String(e));
     deskPanel?.endFoundingFreeze();
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Founding interview failed", e));
+    void vscode.window.showErrorMessage(reportError("Founding interview failed", e));
   }
 }
 
@@ -1801,7 +1835,7 @@ async function pickEntry(
       state.setEntries(entries);
     } catch (e) {
       invalidateApi();
-      void vscode.window.showErrorMessage(formatErr("Could not load queue", e));
+      void vscode.window.showErrorMessage(reportError("Could not load queue", e));
       return undefined;
     }
   }
@@ -1837,7 +1871,7 @@ async function openEntry(
   if (!projectId) return;
   const root = (await ensureProjectRoot(projectId)) || state.getProjectRoot();
   if (!root) {
-    void vscode.window.showErrorMessage("Unknown project root.");
+    void vscode.window.showErrorMessage(reportError("Unknown project root."));
     return;
   }
   if (opts?.fromQueueClick) {
@@ -1854,7 +1888,7 @@ async function openEntry(
     await vscode.window.showTextDocument(doc, { preview: true, preserveFocus: false });
     updateEditorContext();
   } catch (e) {
-    void vscode.window.showErrorMessage(formatErr(`Could not open ${abs}`, e));
+    void vscode.window.showErrorMessage(reportError(`Could not open ${abs}`, e));
   }
 }
 
@@ -2021,7 +2055,9 @@ async function waitForProposalFile(
 async function openDraftedProposal(projectId: string): Promise<void> {
   const root = (await ensureProjectRoot(projectId)) || state.getProjectRoot();
   if (!root) {
-    void vscode.window.showErrorMessage("Could not open Desk Proposal: no project root.");
+    void vscode.window.showErrorMessage(
+      reportError("Could not open Desk Proposal: no project root."),
+    );
     return;
   }
 
@@ -2099,9 +2135,9 @@ async function openDraftedProposal(projectId: string): Promise<void> {
       bytes: (await fs.stat(abs)).size,
     });
   } catch (e) {
-    const msg = formatErr(`Could not open Desk Proposal at ${abs}`, e);
-    debug.log(msg);
-    void vscode.window.showErrorMessage(msg);
+    void vscode.window.showErrorMessage(
+      reportError(`Could not open Desk Proposal at ${abs}`, e),
+    );
   }
 }
 
@@ -2133,7 +2169,7 @@ async function saveDirtyProposalDocument(
   const abs = root ? proposalDocumentPath(entry, root) : undefined;
   if (!abs) {
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: could not resolve DESK-PROPOSAL.md.",
+      reportError("Found Desk stopped: could not resolve DESK-PROPOSAL.md."),
     );
     return false;
   }
@@ -2149,12 +2185,12 @@ async function saveDirtyProposalDocument(
     if (!doc.isDirty) return true;
     if (await doc.save()) return true;
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: DESK-PROPOSAL.md could not be saved.",
+      reportError("Found Desk stopped: DESK-PROPOSAL.md could not be saved."),
     );
     return false;
   } catch (error) {
     void vscode.window.showErrorMessage(
-      formatErr("Found Desk stopped: could not save DESK-PROPOSAL.md", error),
+      reportError("Found Desk stopped: could not save DESK-PROPOSAL.md", error),
     );
     return false;
   }
@@ -2192,7 +2228,7 @@ async function approveEntry(entry: QueueEntry): Promise<void> {
   );
   if (state.isProposing() && !proposal) {
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: the DESK-PROPOSAL.md queue entry is missing.",
+      reportError("Found Desk stopped: the DESK-PROPOSAL.md queue entry is missing."),
     );
     return;
   }
@@ -2234,7 +2270,7 @@ async function approveEntry(entry: QueueEntry): Promise<void> {
     }
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Approve failed", e));
+    void vscode.window.showErrorMessage(reportError("Approve failed", e));
   }
 }
 
@@ -2257,7 +2293,7 @@ async function foundFromProposal(projectId: string): Promise<void> {
     }
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Found Desk failed", e));
+    void vscode.window.showErrorMessage(reportError("Found Desk failed", e));
     return;
   }
   state.setFoundingPhase("none");
@@ -2298,7 +2334,7 @@ async function commentEntry(entry: QueueEntry, text: string): Promise<void> {
     deskPanel?.refresh();
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Comment failed", e));
+    void vscode.window.showErrorMessage(reportError("Comment failed", e));
   }
 }
 
@@ -2342,7 +2378,7 @@ async function refreshDiffForEntry(entry: QueueEntry): Promise<QueueEntry> {
     state.setLastEntry(next);
     return next;
   } catch (e) {
-    void vscode.window.showErrorMessage(formatErr("Diffstat failed", e));
+    void vscode.window.showErrorMessage(reportError("Diffstat failed", e));
     return entry;
   }
 }
@@ -2606,16 +2642,32 @@ export function activate(context: vscode.ExtensionContext): void {
   void ensureKettleWorkspaceLayout();
 
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
-  statusItem.command = "kettle.debug";
-  statusItem.text = "$(circle-outline) Kettle";
-  statusItem.tooltip = `Kettle ${identity.version} · ${identity.buildId} (click: Debug)`;
+  statusItem.command = "kettle.showDebugPanel";
   statusItem.show();
+  setStatusBarBase("$(circle-outline) Kettle", `Kettle ${identity.version} · ${identity.buildId}`);
   context.subscriptions.push(statusItem);
   context.subscriptions.push(
     vscode.commands.registerCommand("kettle.debug", () => runKettleDebug()),
     // Aliases — keep old command ids working for keybindings / muscle memory
     vscode.commands.registerCommand("kettle.showDebugLog", () => runKettleDebug()),
     vscode.commands.registerCommand("kettle.debugSelectionSync", () => runKettleDebug()),
+    vscode.commands.registerCommand("kettle.showDebugPanel", async () => {
+      for (const cmd of ["workbench.view.extension.kettle-desk", "kettle.debugPanel.focus"]) {
+        try {
+          await vscode.commands.executeCommand(cmd);
+        } catch {
+          /* host may not expose every command */
+        }
+      }
+    }),
+    vscode.commands.registerCommand("kettle.copyDebugReport", async () => {
+      await vscode.env.clipboard.writeText(debug.buildDebugReport());
+      void vscode.window.showInformationMessage(
+        "Kettle debug report copied — paste it to your coding agent.",
+      );
+    }),
+    debug.onDidLog(() => renderStatusBar()),
+    debug.onDidClearLog(() => renderStatusBar()),
   );
   context.subscriptions.push({ dispose: () => debug.disposeDebug() });
 
@@ -2733,11 +2785,8 @@ export function activate(context: vscode.ExtensionContext): void {
           await afterProjectBound(id);
         }
       } catch (e) {
-        debug.log(
-          `selectProject failed: ${e instanceof Error ? e.message : String(e)}`,
-        );
         void vscode.window.showErrorMessage(
-          formatErr("Could not select project", e),
+          reportError("Could not select project", e),
         );
       }
     },
@@ -2768,8 +2817,13 @@ export function activate(context: vscode.ExtensionContext): void {
     refreshQueue,
   });
 
+  debugPanel = new DebugPanelProvider();
+
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(DeskPanelProvider.viewType, deskPanel, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
+    vscode.window.registerWebviewViewProvider(DebugPanelProvider.viewType, debugPanel, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
 
@@ -2860,7 +2914,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       } catch (e) {
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Could not restart Kettle core", e));
+        void vscode.window.showErrorMessage(reportError("Could not restart Kettle core", e));
       }
     }),
 
@@ -2871,10 +2925,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const client = await api();
         const ping = await client.ping();
         state.setConnected(true, `Kettle · :${ping.port}`);
-        if (statusItem) {
-          statusItem.text = `$(check) Kettle :${ping.port}`;
-          statusItem.tooltip = `Core pid ${ping.pid} · ${cached?.baseUrl}`;
-        }
+        setStatusBarBase(`$(check) Kettle :${ping.port}`, `Core pid ${ping.pid} · ${cached?.baseUrl}`);
         const reg = ping.projects ? ` · ${ping.projects}` : "";
         const contract =
           ping.api_version == null || ping.desk_schema_version == null
@@ -2886,7 +2937,7 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (e) {
         invalidateApi();
         void vscode.window.showErrorMessage(
-          formatErr(
+          reportError(
             "Could not reach or start Kettle core — check kettle.command / ~/.kettle-venv",
             e,
           ),
@@ -2924,7 +2975,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.showTextDocument(doc, { preview: true });
       } catch (e) {
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Could not load queue", e));
+        void vscode.window.showErrorMessage(reportError("Could not load queue", e));
       }
     }),
 
@@ -2992,7 +3043,7 @@ export function activate(context: vscode.ExtensionContext): void {
         void vscode.window.showInformationMessage(`Sweep finished for ${projectId}.`);
       } catch (e) {
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Sweep failed", e));
+        void vscode.window.showErrorMessage(reportError("Sweep failed", e));
       }
     }),
 
@@ -3023,10 +3074,12 @@ export function activate(context: vscode.ExtensionContext): void {
           /not found/i.test(msg) ||
           (e instanceof KettleApiError && e.status === 404);
         void vscode.window.showErrorMessage(
-          staleCore
-            ? `Refresh briefs failed: core does not expose /api/refresh-briefs (${msg}). ` +
-                "Run Kettle: Restart Core (or restart `kettle --web`) so the live process loads the current server.py, then try again."
-            : formatErr("Refresh briefs failed", e),
+          reportError(
+            staleCore
+              ? `Refresh briefs failed: core does not expose /api/refresh-briefs (${msg}). ` +
+                  "Run Kettle: Restart Core (or restart `kettle --web`) so the live process loads the current server.py, then try again."
+              : formatErr("Refresh briefs failed", e),
+          ),
         );
       }
     }),
@@ -3067,7 +3120,7 @@ export function activate(context: vscode.ExtensionContext): void {
         else void vscode.window.showInformationMessage(notice);
       } catch (e) {
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Compact failed", e));
+        void vscode.window.showErrorMessage(reportError("Compact failed", e));
       }
     }),
   );

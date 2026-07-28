@@ -46,6 +46,36 @@ let channel: vscode.OutputChannel | undefined;
 let lastIdentity: ExtensionIdentity | undefined;
 let logFileReady = false;
 
+export type LogLevel = "info" | "error";
+export type LogEntry = { ts: number; text: string; level: LogLevel };
+
+/** Ring buffer backing the Debug webview — feeds live from every log()/logBlock() call. */
+const RING_LIMIT = 500;
+let ring: LogEntry[] = [];
+const logEmitter = new vscode.EventEmitter<LogEntry>();
+const clearEmitter = new vscode.EventEmitter<void>();
+
+/** Fires once per log() call — used by the Debug panel to append live. */
+export const onDidLog = logEmitter.event;
+/** Fires when clearRecentLog() runs — used by the Debug panel to wipe its view. */
+export const onDidClearLog = clearEmitter.event;
+
+/** Heuristic severity from existing log conventions (`... FAIL ...`, formatErr() text). */
+function detectLevel(line: string): LogLevel {
+  return /\bFAIL\b|\berror\b|\bfailed\b|\bexception\b/i.test(line) ? "error" : "info";
+}
+
+/** Snapshot of the in-memory log ring (most recent last). */
+export function getRecentLog(): LogEntry[] {
+  return ring.slice();
+}
+
+/** Wipe the in-memory ring (does not touch the Output channel or on-disk log). */
+export function clearRecentLog(): void {
+  ring = [];
+  clearEmitter.fire();
+}
+
 function ensureLogFile(): void {
   if (logFileReady) return;
   try {
@@ -100,13 +130,17 @@ export function ensureChannel(): vscode.OutputChannel {
   return channel;
 }
 
-/** Log one line to Output + ~/.cache/kettle/plugin-debug.log */
+/** Log one line to Output + ~/.cache/kettle/plugin-debug.log + the live Debug panel ring. */
 export function log(line: string): void {
   const ch = ensureChannel();
   const ts = new Date().toISOString().slice(11, 23);
   const stamped = `[${ts}] ${line}`;
   ch.appendLine(stamped);
   appendLogFile(stamped);
+  const entry: LogEntry = { ts: Date.now(), text: stamped, level: detectLevel(line) };
+  ring.push(entry);
+  if (ring.length > RING_LIMIT) ring.shift();
+  logEmitter.fire(entry);
 }
 
 /** Log a multi-line block (each line stamped). */
@@ -165,6 +199,33 @@ export function logIdentitySnapshot(): void {
     log("—— identity (not activated yet) ——");
   }
   log(`log file          ${logFilePath()}`);
+}
+
+/** Error-level lines currently in the ring — drives the status bar badge. Reset by clearRecentLog(). */
+export function errorCount(): number {
+  return ring.filter((e) => e.level === "error").length;
+}
+
+/**
+ * Assemble a copy-pasteable diagnostics report — identity + recent log lines,
+ * fenced so it drops cleanly into a coding agent's chat.
+ */
+export function buildDebugReport(maxLines = 200): string {
+  const lines: string[] = ["# Kettle Debug Report", ""];
+  if (lastIdentity) {
+    lines.push(
+      `- extension: ${lastIdentity.id} ${lastIdentity.version} (build ${lastIdentity.buildId})`,
+      `- host: ${lastIdentity.appName}${lastIdentity.isDevHost ? " (dev host)" : ""}`,
+      `- log file: ${logFilePath()}`,
+    );
+  } else {
+    lines.push("- extension: (not activated yet)");
+  }
+  lines.push("", "```");
+  const recent = ring.slice(-maxLines).map((e) => e.text);
+  lines.push(...(recent.length ? recent : ["(no log lines captured this session)"]));
+  lines.push("```");
+  return lines.join("\n");
 }
 
 export function disposeDebug(): void {

@@ -18,6 +18,12 @@
 - `kettle.autoSweepOnQueueDone` to run Sweep automatically once the queue has
   no pending entries left.
 - `kettle.logToFile` to opt out of the on-disk diagnostics mirror.
+- Live **Kettle Debug** panel (Kettle Desk → Debug) mirroring the diagnostic
+  log in real time, with error highlighting and a status-bar error badge.
+- **Kettle: Copy Debug Report** command / panel button — copies identity +
+  recent log lines as a Markdown block for pasting into a coding agent.
+- Every user-facing error toast now also logs to the debug ring, so it shows
+  up in the live panel and in Copy Debug Report — not just as a toast.
 
 ### Compatibility
 

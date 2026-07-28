@@ -32,6 +32,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onView:kettle.deskPanel",
+    "onView:kettle.debugPanel",
     "onView:kettle.queue",
     "onCommand:kettle.showQueue",
     "onCommand:kettle.openEntry",
@@ -49,7 +50,9 @@
     "onCommand:kettle.compactSession",
     "onCommand:kettle.debug",
     "onCommand:kettle.debugSelectionSync",
-    "onCommand:kettle.showDebugLog"
+    "onCommand:kettle.showDebugLog",
+    "onCommand:kettle.showDebugPanel",
+    "onCommand:kettle.copyDebugReport"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -156,6 +159,18 @@
         "category": "Kettle"
       },
       {
+        "command": "kettle.showDebugPanel",
+        "title": "Kettle: Show Debug Panel",
+        "icon": "$(debug-console)",
+        "category": "Kettle"
+      },
+      {
+        "command": "kettle.copyDebugReport",
+        "title": "Kettle: Copy Debug Report",
+        "icon": "$(copy)",
+        "category": "Kettle"
+      },
+      {
         "command": "kettle.queue.select",
         "title": "Kettle: Open Queue Item"
       }
@@ -185,6 +200,13 @@
           "name": "Desk",
           "contextualTitle": "Kettle Desk",
           "visibility": "visible"
+        },
+        {
+          "type": "webview",
+          "id": "kettle.debugPanel",
+          "name": "Debug",
+          "contextualTitle": "Kettle Debug",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -199,6 +221,11 @@
           "command": "kettle.refreshBriefs",
           "when": "view == kettle.queue && kettle.hasProject",
           "group": "navigation@2"
+        },
+        {
+          "command": "kettle.copyDebugReport",
+          "when": "view == kettle.debugPanel",
+          "group": "navigation@1"
         }
       ],
       "editor/title": [
