@@ -10,7 +10,7 @@ export const UI_COPY = {
   chatPlaceholder: "Chat with the Kettle agent…",
   chatPlaceholderFounding: "Chat with the Kettle agent…",
   chatPlaceholderProposing: "Ask to revise the proposal — or edit it, then Found Desk",
-  editorPlaceholder: "select a file from the queue",
+  editorPlaceholder: "",
   editorPlaceholderFounding: "Founding Interview — work in the agent pane on the right",
   editorPlaceholderProposing: "Desk Proposal — edit, then use Found Desk",
   commentPlaceholder: "a note for the sweep, tied to this file — Enter saves · Shift+Enter newline · Esc cancels",
