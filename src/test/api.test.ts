@@ -8,6 +8,57 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+describe("GET /api/ping contract shape", () => {
+  it("surfaces identity and curator public fields from core", async () => {
+    globalThis.fetch = async (input) => {
+      assert.equal(new URL(String(input)).pathname, "/api/ping");
+      return new Response(
+        JSON.stringify({
+          app: "kettle",
+          version: "0.2.0",
+          api_version: 0,
+          desk_schema_version: 0,
+          pid: 11,
+          port: 4242,
+          started: "2026-07-11T14:00:00-0400",
+          projects: "/tmp/projects.json",
+          settings: "/tmp/settings.json",
+          curator: {
+            provider: "claude",
+            command: "claude",
+            command_resolved: "/usr/bin/claude",
+            command_exists: true,
+            models: { chat: "sonnet", setup: "sonnet" },
+            effort: "default",
+            efforts: { setup: "default", chat: "default" },
+            stream: "stream-json",
+            capabilities: {
+              read_only_tier: true,
+              tool_allowlist: true,
+              resume: true,
+              effort: true,
+              fenced_writes: true,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+    };
+
+    const ping = await new KettleApi("http://127.0.0.1:4242").ping();
+    assert.equal(ping.app, "kettle");
+    assert.equal(ping.api_version, 0);
+    assert.equal(ping.desk_schema_version, 0);
+    assert.equal(ping.port, 4242);
+    assert.equal(ping.curator?.effort, "default");
+    assert.equal(ping.curator?.stream, "stream-json");
+    assert.equal(ping.curator?.capabilities?.fenced_writes, true);
+  });
+});
+
 function ndjsonResponse(lines: string[]): Response {
   const encoder = new TextEncoder();
   const chunks = lines.map((line) => encoder.encode(line));
