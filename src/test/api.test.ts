@@ -133,3 +133,21 @@ describe("canonical ritual API routes", () => {
     );
   });
 });
+
+describe("X-Kettle-Token header", () => {
+  it("attaches the discovery token on API requests", async () => {
+    const seen: string[] = [];
+    globalThis.fetch = async (_input, init) => {
+      const headers = new Headers(init?.headers);
+      seen.push(headers.get("X-Kettle-Token") || "");
+      return new Response(JSON.stringify({ app: "kettle", port: 4242 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    };
+    const api = new KettleApi("http://127.0.0.1:4242", "unit-test-token");
+    await api.ping();
+    assert.equal(seen[0], "unit-test-token");
+  });
+});
+

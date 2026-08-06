@@ -4,6 +4,26 @@
  * Streaming routes (sweep/chat/…) return NDJSON — see kettle-core/API.md.
  */
 
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+
+export function runtimeCachePath(): string {
+  return path.join(os.homedir(), ".cache", "kettle", "server.json");
+}
+
+/** Per-boot token from ~/.cache/kettle/server.json (mode 0600). */
+export function readDiscoveryToken(): string {
+  try {
+    const data = JSON.parse(fs.readFileSync(runtimeCachePath(), "utf8")) as {
+      token?: unknown;
+    };
+    return typeof data.token === "string" ? data.token : "";
+  } catch {
+    return "";
+  }
+}
+
 export type Project = {
   id: string;
   name: string;
@@ -116,10 +136,25 @@ export class KettleApiError extends Error {
 }
 
 export class KettleApi {
-  constructor(private readonly baseUrl: string) {}
+  private token: string;
+
+  constructor(private readonly baseUrl: string, token?: string) {
+    this.token = token ?? "";
+  }
 
   get base(): string {
     return this.baseUrl;
+  }
+
+  setToken(token: string): void {
+    this.token = token || "";
+  }
+
+  private authHeaders(extra?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = { ...(extra || {}) };
+    const tok = this.token || readDiscoveryToken();
+    if (tok) headers["X-Kettle-Token"] = tok;
+    return headers;
   }
 
   private url(path: string, query?: Record<string, string | undefined>): string {
@@ -139,7 +174,9 @@ export class KettleApi {
   ): Promise<T> {
     const res = await fetch(this.url(path, opts?.query), {
       method,
-      headers: opts?.body != null ? { "Content-Type": "application/json" } : undefined,
+      headers: this.authHeaders(
+        opts?.body != null ? { "Content-Type": "application/json" } : undefined,
+      ),
       body: opts?.body != null ? JSON.stringify(opts.body) : undefined,
     });
     let data: unknown;
@@ -170,7 +207,7 @@ export class KettleApi {
   ): Promise<StreamResult> {
     const res = await fetch(this.url(path), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
       signal,
     });

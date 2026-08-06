@@ -7,7 +7,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { Ping, KettleApi, KettleApiError } from "./api";
+import { Ping, KettleApi, KettleApiError, readDiscoveryToken } from "./api";
 import {
   KettleCompatibilityError,
   assertCoreCompatibility,
@@ -64,7 +64,7 @@ export async function resolveCoreBaseUrl(configured: string): Promise<{
   for (const base of discoveryCandidates(configured)) {
     tried.push(base);
     try {
-      const ping = await new KettleApi(base).ping();
+      const ping = await new KettleApi(base, readDiscoveryToken()).ping();
       if (ping.app !== "kettle" && ping.app !== "setsweep") continue;
       const urlPort = Number(new URL(base).port);
       if (!urlPort || ping.port !== urlPort) continue;
