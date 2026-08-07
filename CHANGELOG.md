@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Do not open the project QuickPick (or warn) on every window load when the
+  open folder is not a registered Kettle desk. Auto-resolve stays silent;
+  pick/register only when the user chooses Select Project or runs a desk
+  command that needs a bound project. Unregistered folders leave the Desk
+  empty-state CTA idle until asked.
+
 ## 0.1.0
 
 ### Added

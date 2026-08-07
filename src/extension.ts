@@ -455,18 +455,18 @@ async function resolveProjectId(forcePick = false): Promise<string | undefined> 
     }
   }
 
-  // No projects yet — go straight to folder browser (first-run).
+  // Auto-resolve (activate, background refresh, editor sync): never steal focus.
+  // Unregistered folders stay unbound; Desk empty-state / command palette invite
+  // registration only when the user asks.
+  if (!forcePick) {
+    return undefined;
+  }
+
+  // Explicit Select Project (or a command that needs a desk): offer picker.
   if (!projects.length) {
-    if (!forcePick) {
-      void vscode.window.showWarningMessage(
-        "No projects registered yet. Use Kettle: Register New Project (or the Desk project menu).",
-      );
-      return undefined;
-    }
     return registerNewProject();
   }
 
-  // No path match: do not auto-bind another project's desk. Offer picker with context.
   const folderHint =
     folders.length === 1
       ? path.basename(folders[0])
@@ -495,9 +495,9 @@ async function resolveProjectId(forcePick = false): Promise<string | undefined> 
       },
     ],
     {
-      placeHolder: forcePick
-        ? "Kettle project"
-        : `No Kettle project matches this workspace (${folderHint}). Pick one or register a folder.`,
+      placeHolder: folders.length
+        ? `Kettle project (no match for ${folderHint})`
+        : "Kettle project",
     },
   );
   if (!pick) return undefined;
@@ -1697,7 +1697,8 @@ function updateEditorContext(): void {
 async function resolveEntryForAction(opts?: {
   pendingOnly?: boolean;
 }): Promise<QueueEntry | undefined> {
-  const projectId = await resolveProjectId();
+  // User-initiated action — offer project pick if this window is unbound.
+  const projectId = state.getProjectId() || (await resolveProjectId(true));
   if (!projectId) return undefined;
 
   const fromEditor = entryForActiveEditor();
@@ -1718,7 +1719,7 @@ async function resolveEntryForAction(opts?: {
 }
 
 async function beginFounding(): Promise<void> {
-  const projectId = state.getProjectId() || (await resolveProjectId());
+  const projectId = state.getProjectId() || (await resolveProjectId(true));
   if (!projectId) {
     void vscode.window.showWarningMessage("Select a Kettle project first.");
     return;
@@ -2254,7 +2255,7 @@ async function jumpToActiveEditorEntry(): Promise<void> {
     void vscode.window.showInformationMessage("No active file editor.");
     return;
   }
-  const projectId = state.getProjectId() || (await resolveProjectId());
+  const projectId = state.getProjectId() || (await resolveProjectId(true));
   if (!projectId) return;
   if (!state.getEntries().length) await refreshQueue();
   const hit = findEntryForEditorPath(
@@ -2579,7 +2580,7 @@ export function activate(context: vscode.ExtensionContext): void {
     approve: (e) => approveEntry(e),
     comment: (e, text) => commentEntry(e, text),
     sweep: async (opts) => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       if (!(await confirmSweep(projectId))) {
         const cancel = new Error("Sweep cancelled");
@@ -2595,7 +2596,7 @@ export function activate(context: vscode.ExtensionContext): void {
       void vscode.window.showInformationMessage(`Sweep finished for ${projectId}.`);
     },
     chat: async (message, opts) => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       const entry = state.getLastEntry();
       await (await api()).chat(projectId, message, {
@@ -2605,7 +2606,7 @@ export function activate(context: vscode.ExtensionContext): void {
       });
     },
     interview: async (message, opts) => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       state.setFoundingPhase("interviewing");
       await (await api()).interview(projectId, message, {
@@ -2614,7 +2615,7 @@ export function activate(context: vscode.ExtensionContext): void {
       });
     },
     propose: async (opts) => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       await (await api()).propose(projectId, {
         onEvent: opts?.onEvent,
@@ -2644,12 +2645,12 @@ export function activate(context: vscode.ExtensionContext): void {
       );
     },
     openDraftedProposal: async () => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       await openDraftedProposal(projectId);
     },
     compact: async (opts) => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       return compactProject(projectId, {
         onEvent: opts?.onEvent,
@@ -2850,7 +2851,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("kettle.showQueue", async () => {
-      const projectId = await resolveProjectId();
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       try {
         const q = await (await api()).queue(projectId, { mutate: false });
@@ -2871,7 +2872,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("kettle.openEntry", async () => {
-      const projectId = await resolveProjectId();
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       const entry = await pickEntry(projectId);
       if (!entry) return;
@@ -2916,7 +2917,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("kettle.sweep", async () => {
-      const projectId = await resolveProjectId();
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       if (!(await confirmSweep(projectId))) return;
       try {
@@ -2939,7 +2940,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("kettle.refreshBriefs", async () => {
-      const projectId = await resolveProjectId();
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       try {
         await vscode.window.withProgress(
@@ -2986,7 +2987,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand("kettle.compactSession", async () => {
-      const projectId = state.getProjectId() || (await resolveProjectId());
+      const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) {
         void vscode.window.showWarningMessage("Select a Kettle project first.");
         return;
