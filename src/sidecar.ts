@@ -21,24 +21,63 @@ export type SidecarState = {
 
 const DEFAULT_PORT = 4242;
 
-function sidecarEnv(): NodeJS.ProcessEnv {
-  // Prefer user/venv shims over Homebrew so editable installs stay current.
-  // During Setsweep → Kettle transition, also search the legacy venv.
-  const extra = [
-    path.join(os.homedir(), ".kettle-venv/bin"),
-    path.join(os.homedir(), ".setsweep-venv/bin"),
-    path.join(os.homedir(), ".local/bin"),
-    path.join(os.homedir(), ".pyenv/shims"),
+/**
+ * Directories where a `kettle`/`setsweep` CLI is likely installed. Shared by
+ * the child PATH (sidecarEnv) and by command resolution so the two never drift.
+ * Order = preference: canonical venv, legacy venv, user bin, pyenv, Homebrew.
+ */
+function sidecarSearchDirs(): string[] {
+  const home = os.homedir();
+  return [
+    path.join(home, ".kettle-venv/bin"),
+    path.join(home, ".setsweep-venv/bin"),
+    path.join(home, ".local/bin"),
+    path.join(home, ".pyenv/shims"),
     "/opt/homebrew/bin",
     "/usr/local/bin",
   ];
+}
+
+function sidecarEnv(): NodeJS.ProcessEnv {
+  // Prefer user/venv shims over Homebrew so editable installs stay current.
   const current = process.env.PATH ?? "";
-  return { ...process.env, PATH: [...extra, current].join(path.delimiter) };
+  return {
+    ...process.env,
+    PATH: [...sidecarSearchDirs(), current].join(path.delimiter),
+  };
 }
 
 /**
- * Resolve the CLI used to spawn core. Absolute config wins; otherwise try the
- * canonical venv, legacy setsweep install, then ~/.local/bin, then PATH.
+ * First existing regular file `dir/name`, scanning names-major so the modern
+ * `kettle` is preferred over the legacy `setsweep` in every directory. Pure and
+ * side-effect free — the resolution unit under test.
+ */
+export function findCommandInDirs(names: string[], dirs: string[]): string | null {
+  for (const name of names) {
+    for (const dir of dirs) {
+      if (!dir) continue;
+      const candidate = path.join(dir, name);
+      try {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+          return candidate;
+        }
+      } catch {
+        /* unreadable — skip */
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Resolve the CLI used to spawn core. Absolute config wins; otherwise resolve to
+ * an absolute path across the known install dirs and the inherited PATH.
+ *
+ * Why not just spawn the bare name: GUI-launched editors (VS Code / Cursor on
+ * macOS) start with a minimal PATH that usually omits venv, pyenv, and
+ * Homebrew, so `spawn("kettle")` can fail to resolve even though it runs fine
+ * from a terminal — the core "couldn't launch from the editor host" symptom.
+ * Finding the absolute path ourselves sidesteps the child spawn's PATH lookup.
  */
 export function resolveKettleCommand(configured: string): string {
   const raw = (configured || "kettle").trim() || "kettle";
@@ -47,20 +86,14 @@ export function resolveKettleCommand(configured: string): string {
     const expanded = path.join(os.homedir(), raw.slice(2));
     if (fs.existsSync(expanded)) return expanded;
   }
-  const candidates = [
-    path.join(os.homedir(), ".kettle-venv", "bin", "kettle"),
-    path.join(os.homedir(), ".local", "bin", "kettle"),
-    // Transitional: dogfood against pre-rename core
-    path.join(os.homedir(), ".setsweep-venv", "bin", "setsweep"),
-    path.join(os.homedir(), ".local", "bin", "setsweep"),
-  ];
-  for (const c of candidates) {
-    try {
-      if (fs.existsSync(c) && fs.statSync(c).isFile()) return c;
-    } catch {
-      /* try next */
-    }
-  }
+  const inheritedPath = (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .filter(Boolean);
+  const found = findCommandInDirs(
+    ["kettle", "setsweep"],
+    [...sidecarSearchDirs(), ...inheritedPath],
+  );
+  if (found) return found;
   return raw;
 }
 
