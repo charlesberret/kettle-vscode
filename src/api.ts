@@ -3,6 +3,36 @@
  * Approve is a ruling bookmark — never conflate with host "accept diff."
  * Streaming routes (sweep/chat/…) return NDJSON — see kettle-core/API.md.
  */
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+
+/** Discovery record path (mirrors discover.ts; inlined to avoid an import cycle). */
+function discoveryPath(): string {
+  return path.join(os.homedir(), ".cache", "kettle", "server.json");
+}
+
+/**
+ * Extract the per-boot auth token from discovery-record JSON, or null.
+ * Pure — the unit under test. See kettle-core/docs/AUTH-TOKEN.md.
+ */
+export function parseDiscoveryToken(raw: string): string | null {
+  try {
+    const data = JSON.parse(raw) as { token?: unknown };
+    return typeof data.token === "string" && data.token ? data.token : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Current core auth token from `~/.cache/kettle/server.json`, or null. */
+export function readDiscoveryToken(): string | null {
+  try {
+    return parseDiscoveryToken(fs.readFileSync(discoveryPath(), "utf8"));
+  } catch {
+    return null;
+  }
+}
 
 export type Project = {
   id: string;
@@ -115,6 +145,18 @@ export class KettleApi {
     return u.toString();
   }
 
+  /**
+   * Headers for a core request. Every /api/ route requires X-Kettle-Token
+   * (kettle-core/docs/AUTH-TOKEN.md); read it fresh from the discovery record so
+   * a per-boot rotation is picked up without reconstructing the client.
+   */
+  private headers(extra?: Record<string, string>): Record<string, string> {
+    const h: Record<string, string> = { ...(extra ?? {}) };
+    const token = readDiscoveryToken();
+    if (token) h["X-Kettle-Token"] = token;
+    return h;
+  }
+
   private async request<T>(
     method: string,
     path: string,
@@ -122,7 +164,9 @@ export class KettleApi {
   ): Promise<T> {
     const res = await fetch(this.url(path, opts?.query), {
       method,
-      headers: opts?.body != null ? { "Content-Type": "application/json" } : undefined,
+      headers: this.headers(
+        opts?.body != null ? { "Content-Type": "application/json" } : undefined,
+      ),
       body: opts?.body != null ? JSON.stringify(opts.body) : undefined,
     });
     let data: unknown;
@@ -153,7 +197,7 @@ export class KettleApi {
   ): Promise<StreamResult> {
     const res = await fetch(this.url(path), {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
       signal,
     });
