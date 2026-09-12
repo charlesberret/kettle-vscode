@@ -11,7 +11,7 @@ project registry, on-disk Desk, HTTP contract, CLI, and reference web UI.
 
 ## Status
 
-**Pre-release (`0.1.0`).** The extension is usable from source and can be
+**Pre-release (`0.1.1`).** The extension is usable from source and can be
 packaged as a VSIX. It is not yet published to the Visual Studio Marketplace.
 
 During the rename from Setsweep, Kettle prefers the new `kettle` command,
@@ -34,12 +34,12 @@ npm test
 npm run package
 ```
 
-Install the generated `kettle-0.1.0.vsix`:
+Install the generated `kettle-0.1.1.vsix`:
 
 ```sh
-code --install-extension kettle-0.1.0.vsix --force
+code --install-extension kettle-0.1.1.vsix --force
 # or
-cursor --install-extension kettle-0.1.0.vsix --force
+cursor --install-extension kettle-0.1.1.vsix --force
 ```
 
 Reload the editor, then open the command palette and run **Kettle: Ping Core**.

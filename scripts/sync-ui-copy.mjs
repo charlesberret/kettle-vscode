@@ -27,13 +27,16 @@ function candidates() {
   }
   for (const env of ["KETTLE_SRC", "SETSWEEP_SRC"]) {
     if (process.env[env]) {
+      list.push(path.join(process.env[env], "kettle", "static", "ui-copy.js"));
       list.push(path.join(process.env[env], "static", "ui-copy.js"));
     }
   }
   // kettle-vscode next to kettle-core (or a legacy setsweep-core checkout)
   list.push(
+    path.resolve(pkgRoot, "../kettle-core/kettle/static/ui-copy.js"),
     path.resolve(pkgRoot, "../kettle-core/static/ui-copy.js"),
     path.resolve(pkgRoot, "../setsweep-core/static/ui-copy.js"),
+    path.resolve(pkgRoot, "../../kettle-core/kettle/static/ui-copy.js"),
     path.resolve(pkgRoot, "../../kettle-core/static/ui-copy.js"),
     path.resolve(pkgRoot, "../../setsweep-core/static/ui-copy.js"),
   );

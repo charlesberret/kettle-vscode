@@ -33,12 +33,15 @@ function candidates() {
   if (process.env.KETTLE_PALETTE) list.push(process.env.KETTLE_PALETTE);
   for (const env of ["KETTLE_SRC", "SETSWEEP_SRC"]) {
     if (process.env[env]) {
+      list.push(path.join(process.env[env], "kettle", "static", "kettle-palette.json"));
       list.push(path.join(process.env[env], "static", "kettle-palette.json"));
     }
   }
   list.push(
+    path.resolve(pkgRoot, "../kettle-core/kettle/static/kettle-palette.json"),
     path.resolve(pkgRoot, "../kettle-core/static/kettle-palette.json"),
     path.resolve(pkgRoot, "../setsweep-core/static/kettle-palette.json"),
+    path.resolve(pkgRoot, "../../kettle-core/kettle/static/kettle-palette.json"),
     path.resolve(pkgRoot, "../../kettle-core/static/kettle-palette.json"),
     path.resolve(pkgRoot, "../../setsweep-core/static/kettle-palette.json"),
   );
