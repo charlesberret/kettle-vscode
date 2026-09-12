@@ -2,7 +2,7 @@
   "name": "kettle",
   "displayName": "Kettle",
   "description": "Local-first review desk for coding and writing agent work in VS Code and Cursor.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "preview": true,
   "publisher": "charlesberret",
   "license": "MIT",

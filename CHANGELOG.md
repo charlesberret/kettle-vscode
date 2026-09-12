@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1 — 2026-09-12
+
 ### Added
 
 - Six glaze-pack colour themes (Kettle Cerise, Nectar, Artichaut, Marseille,
