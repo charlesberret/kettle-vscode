@@ -51,14 +51,24 @@ for example `~/.kettle-venv/bin/kettle`.
 
 ## Color themes
 
-The extension ships **Kettle Dark** and **Kettle Light**, projected from the core
-product palette (`kettle-core/static/kettle-palette.json`). With a sibling core
-checkout:
+The extension ships **Kettle Dark** and **Kettle Light** plus the six glaze
+packs — Cerise, Nectar, Artichaut, Marseille, Cobalt, Graphite — each in both
+modes (14 themes), projected from the core product palette
+(`kettle-core/kettle/static/kettle-palette.json` and the `kettle-*.json` packs
+beside it). With a sibling core checkout, or `KETTLE_PALETTE` pointing at the
+palette file:
 
 ```sh
-npm run sync-palette    # regenerate themes/kettle-*-color-theme.json
+npm run sync-palette    # regenerate themes/*.json and package.json contributes.themes
 npm run check-palette   # fail if committed themes drift
 ```
+
+In a glaze pack the enamel is chrome only — cursor, focus ring, badges,
+buttons, active tab and panel borders — never text. Text roles follow the
+core `acc`: the pack's own accent for the cool packs, the marquee accent
+for the warm ones. Selection takes the pack's wash, because VS Code gives no
+selection foreground. Surfaces are the measured shade steps from the palette
+(`resolved`), not mixes. Upstream of core: `~/cloud/sync/design/palettes`.
 
 ## Develop
 

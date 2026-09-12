@@ -21,10 +21,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkgRoot = path.resolve(__dirname, "..");
 const checkOnly = process.argv.includes("--check");
 
-const OUT = {
-  dark: path.join(pkgRoot, "themes", "kettle-dark-color-theme.json"),
-  light: path.join(pkgRoot, "themes", "kettle-light-color-theme.json"),
-};
+// One file per theme record and mode: themes/<id>-<mode>-color-theme.json.
+// The marquee (id "kettle") keeps its historical filenames; glaze packs
+// (kettle-cerise …) sit beside it and are registered in package.json.
+function outPath(id, mode) {
+  return path.join(pkgRoot, "themes", `${id}-${mode}-color-theme.json`);
+}
 
 function candidates() {
   const list = [];
@@ -126,12 +128,40 @@ function resolveMode(palette, mode) {
     brightWhite: ansi[15],
     mdhead: role(slots, "mdhead"),
     comment: role(slots, "comment"),
+    // Resolved shades and text tones, when the record carries them
+    // (design/palettes writes `resolved` beside the ANSI map: the desk keeps
+    // index+opacity, hex consumers like this one take the measured values).
+    resolved: block.resolved || null,
+    // Glaze packs: the enamel (chrome only — cursor, focus, badges, buttons),
+    // the text polarity it can carry, and the wash a fixed-text selection
+    // falls back to. Absent on the marquee.
+    glaze: block.glaze?.hex || null,
+    onGlaze: block.glaze?.on_glaze || null,
+    wash: block.glaze?.wash || null,
   };
 }
 
 function buildChrome(c, isDark) {
   const black = "#000000";
   const white = "#ffffff";
+  const r = c.resolved;
+  if (r) {
+    // Surfaces are shades of one body (design/palettes enamel curve):
+    // well −1 · ground 0 · panel +1 · active +2. Chrome sits in the well,
+    // widgets on the panel, selection on the active step.
+    return {
+      chrome: r.well,
+      chromeDeep: r.well,
+      surface: r.panel,
+      surface2: r.active,
+      hover: r.panel,
+      selectSoft: r.panel,
+      mutedText: r.muted,
+      dimText: r.faint,
+      punct: r.faint,
+      lineHover: mix(c.line, c.fg, isDark ? 0.15 : 0.1),
+    };
+  }
   if (isDark) {
     return {
       chrome: mix(c.bg, black, 0.28),
@@ -248,8 +278,19 @@ function tokenColors(c, ch) {
 
 function workbench(c, ch, isDark) {
   const onAccent = isDark ? c.bg : c.panel;
+  // Glaze packs: the enamel is a mark, never text. It takes the cursor and
+  // every piece of chrome that was the link/accent colour; text roles keep
+  // following `acc` (which is the pack accent for text-voiced packs and the
+  // marquee accent for body-voiced ones). Selection has no foreground
+  // control in VS Code, so it takes the wash, not the enamel stroke.
+  const g = c.glaze;
+  const onG = c.onGlaze || onAccent;
+  const chromeAcc = g || c.acc;      // was acc-as-chrome
+  const chromeLink = g || c.link;    // was link-as-chrome
+  const sel = c.wash || c.selection;
+  const active = c.resolved ? c.resolved.active : c.activebg;
   return {
-    focusBorder: c.link,
+    focusBorder: chromeLink,
     foreground: c.fg,
     descriptionForeground: ch.mutedText,
     errorForeground: c.brightRed,
@@ -258,25 +299,25 @@ function workbench(c, ch, isDark) {
     "editor.foreground": c.fg,
     "editorLineNumber.foreground": ch.dimText,
     "editorLineNumber.activeForeground": ch.mutedText,
-    "editorCursor.foreground": c.acc,
-    "editor.selectionBackground": alpha(c.selection, "55"),
-    "editor.inactiveSelectionBackground": alpha(c.selection, "33"),
+    "editorCursor.foreground": chromeAcc,
+    "editor.selectionBackground": alpha(sel, c.wash ? "cc" : "55"),
+    "editor.inactiveSelectionBackground": alpha(sel, c.wash ? "88" : "33"),
     "editor.lineHighlightBackground": alpha(c.line, "66"),
-    "editor.wordHighlightBackground": alpha(c.selection, "33"),
+    "editor.wordHighlightBackground": alpha(sel, c.wash ? "88" : "33"),
     "editor.findMatchBackground": alpha(c.acc, "66"),
     "editor.findMatchHighlightBackground": alpha(c.acc, "44"),
     "editorWhitespace.foreground": c.line,
     "editorIndentGuide.background1": c.line,
     "editorIndentGuide.activeBackground1": ch.dimText,
-    "editorBracketMatch.background": alpha(c.link, "33"),
-    "editorBracketMatch.border": c.link,
+    "editorBracketMatch.background": alpha(chromeLink, "33"),
+    "editorBracketMatch.border": chromeLink,
     "editorWidget.background": ch.surface,
     "editorWidget.border": c.line,
     "editorHoverWidget.background": ch.surface,
     "editorHoverWidget.border": c.line,
     "editorSuggestWidget.background": ch.surface,
     "editorSuggestWidget.border": c.line,
-    "editorSuggestWidget.selectedBackground": c.activebg,
+    "editorSuggestWidget.selectedBackground": active,
     "editorGroupHeader.tabsBackground": ch.chrome,
     "editorGroup.border": c.line,
     "editorGutter.addedBackground": c.good,
@@ -293,8 +334,8 @@ function workbench(c, ch, isDark) {
     "activityBar.foreground": c.fg,
     "activityBar.inactiveForeground": ch.dimText,
     "activityBar.border": c.line,
-    "activityBarBadge.background": c.link,
-    "activityBarBadge.foreground": onAccent,
+    "activityBarBadge.background": chromeLink,
+    "activityBarBadge.foreground": onG,
     "titleBar.activeBackground": ch.chromeDeep,
     "titleBar.activeForeground": c.fg,
     "titleBar.inactiveBackground": ch.chromeDeep,
@@ -303,8 +344,8 @@ function workbench(c, ch, isDark) {
     "statusBar.background": ch.chromeDeep,
     "statusBar.foreground": c.fg,
     "statusBar.border": c.line,
-    "statusBar.debuggingBackground": c.acc,
-    "statusBar.debuggingForeground": onAccent,
+    "statusBar.debuggingBackground": chromeAcc,
+    "statusBar.debuggingForeground": onG,
     "statusBar.noFolderBackground": ch.chromeDeep,
     "statusBarItem.remoteBackground": c.cyan,
     "statusBarItem.remoteForeground": onAccent,
@@ -313,12 +354,12 @@ function workbench(c, ch, isDark) {
     "tab.inactiveBackground": ch.chrome,
     "tab.inactiveForeground": ch.mutedText,
     "tab.border": c.line,
-    "tab.activeBorderTop": c.acc,
+    "tab.activeBorderTop": chromeAcc,
     "panel.background": ch.chrome,
     "panel.border": c.line,
     "panelTitle.activeForeground": c.fg,
     "panelTitle.inactiveForeground": ch.mutedText,
-    "panelTitle.activeBorder": c.acc,
+    "panelTitle.activeBorder": chromeAcc,
     "terminal.background": c.bg,
     "terminal.foreground": c.fg,
     "terminal.ansiBlack": isDark ? c.ansi[0] : c.ansi[7],
@@ -337,9 +378,9 @@ function workbench(c, ch, isDark) {
     "terminal.ansiBrightMagenta": c.brightMagenta,
     "terminal.ansiBrightCyan": c.brightCyan,
     "terminal.ansiBrightWhite": isDark ? c.brightWhite : ch.surface,
-    "button.background": c.link,
-    "button.foreground": onAccent,
-    "button.hoverBackground": c.brightBlue,
+    "button.background": chromeLink,
+    "button.foreground": onG,
+    "button.hoverBackground": g ? mix(g, c.fg, 0.15) : c.brightBlue,
     "button.secondaryBackground": c.line,
     "button.secondaryForeground": c.fg,
     "button.secondaryHoverBackground": ch.lineHover,
@@ -347,8 +388,8 @@ function workbench(c, ch, isDark) {
     "input.foreground": c.fg,
     "input.border": c.line,
     "input.placeholderForeground": ch.dimText,
-    "inputOption.activeBorder": c.link,
-    "inputOption.activeBackground": alpha(c.selection, "33"),
+    "inputOption.activeBorder": chromeLink,
+    "inputOption.activeBackground": alpha(sel, c.wash ? "88" : "33"),
     "inputValidation.errorBackground": mix(c.bg, c.warn, 0.15),
     "inputValidation.errorBorder": c.warn,
     "inputValidation.warningBackground": mix(c.bg, c.acc, 0.15),
@@ -359,27 +400,27 @@ function workbench(c, ch, isDark) {
     "dropdown.foreground": c.fg,
     "dropdown.border": c.line,
     "dropdown.listBackground": ch.surface,
-    "list.activeSelectionBackground": c.activebg,
+    "list.activeSelectionBackground": active,
     "list.activeSelectionForeground": isDark ? c.brightWhite : c.fg,
     "list.inactiveSelectionBackground": ch.selectSoft,
     "list.hoverBackground": ch.hover,
-    "list.focusBackground": c.activebg,
+    "list.focusBackground": active,
     "list.highlightForeground": c.acc,
     "list.errorForeground": c.brightRed,
     "list.warningForeground": c.brightYellow,
-    "badge.background": c.link,
-    "badge.foreground": onAccent,
-    "progressBar.background": c.acc,
+    "badge.background": chromeLink,
+    "badge.foreground": onG,
+    "progressBar.background": chromeAcc,
     "scrollbarSlider.background": alpha(c.line, "88"),
     "scrollbarSlider.hoverBackground": alpha(ch.lineHover, "aa"),
-    "scrollbarSlider.activeBackground": alpha(c.link, "66"),
+    "scrollbarSlider.activeBackground": alpha(chromeLink, "66"),
     "gitDecoration.addedResourceForeground": c.good,
     "gitDecoration.modifiedResourceForeground": c.acc,
     "gitDecoration.deletedResourceForeground": c.warn,
     "gitDecoration.untrackedResourceForeground": c.cyan,
     "gitDecoration.ignoredResourceForeground": ch.dimText,
     "gitDecoration.conflictingResourceForeground": c.magenta,
-    "peekView.border": c.link,
+    "peekView.border": chromeLink,
     "peekViewEditor.background": ch.chrome,
     "peekViewResult.background": c.bg,
     "peekViewTitle.background": ch.surface,
@@ -390,12 +431,12 @@ function workbench(c, ch, isDark) {
     "textLink.foreground": c.brightBlue,
     "textLink.activeForeground": mix(c.brightBlue, c.fg, 0.2),
     "textBlockQuote.background": ch.surface,
-    "textBlockQuote.border": c.link,
+    "textBlockQuote.border": chromeLink,
     "textCodeBlock.background": ch.surface,
     "textPreformat.foreground": c.acc,
     "widget.shadow": isDark ? "#00000066" : "#00000022",
     "widget.border": c.line,
-    "toolbar.hoverBackground": c.activebg,
+    "toolbar.hoverBackground": active,
     "editorOverviewRuler.border": c.line,
     "editorOverviewRuler.addedForeground": alpha(c.good, "88"),
     "editorOverviewRuler.modifiedForeground": alpha(c.acc, "88"),
@@ -424,7 +465,7 @@ function buildTheme(palette, mode) {
   const isDark = mode === "dark";
   const c = resolveMode(palette, mode);
   const ch = buildChrome(c, isDark);
-  const label = isDark ? "Kettle Dark" : "Kettle Light";
+  const label = `${palette.label} ${isDark ? "Dark" : "Light"}`;
   return {
     name: label,
     type: isDark ? "dark" : "light",
@@ -456,36 +497,72 @@ if (palette.id !== "kettle") {
   process.exit(1);
 }
 
-const generated = {
-  dark: buildTheme(palette, "dark"),
-  light: buildTheme(palette, "light"),
-};
+// Glaze packs live beside the marquee in core's bundled themes directory
+// (static/themes/kettle-<pack>.json, each carrying a `glaze` block).
+function findPacks() {
+  const dir = path.join(path.dirname(src), "themes");
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => /^kettle-[a-z0-9-]+\.json$/.test(f))
+    .sort()
+    .map((f) => JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")))
+    .filter((p) => p && p.id && p.label && p.dark?.glaze && p.light?.glaze);
+}
 
-let dirty = false;
-for (const mode of ["dark", "light"]) {
-  const body = stableStringify(generated[mode]);
-  const out = OUT[mode];
-  const prev = fs.existsSync(out) ? fs.readFileSync(out, "utf8") : "";
-  if (prev === body) {
-    console.log(`sync-palette: ${path.relative(pkgRoot, out)} up to date`);
-    continue;
-  }
-  dirty = true;
-  if (checkOnly) {
-    console.error(
-      `sync-palette: ${path.relative(pkgRoot, out)} differs from core palette\n` +
-        "  Run npm run sync-palette and commit the generated themes.",
-    );
-  } else {
-    fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, body, "utf8");
-    console.log(
-      `sync-palette: wrote ${path.relative(pkgRoot, out)} from ${path.relative(process.cwd(), src)}`,
-    );
+const records = [palette, ...findPacks()];
+const plan = [];
+for (const rec of records) {
+  for (const mode of ["dark", "light"]) {
+    const theme = buildTheme(rec, mode);
+    plan.push({
+      id: rec.id,
+      mode,
+      out: outPath(rec.id, mode),
+      body: stableStringify(theme),
+      label: theme.name,
+      uiTheme: mode === "dark" ? "vs-dark" : "vs",
+    });
   }
 }
 
-if (checkOnly && dirty) process.exit(1);
+let dirty = false;
+for (const item of plan) {
+  const prev = fs.existsSync(item.out) ? fs.readFileSync(item.out, "utf8") : "";
+  if (prev === item.body) continue;
+  dirty = true;
+  if (checkOnly) {
+    console.error(`sync-palette: ${path.relative(pkgRoot, item.out)} differs from core palette`);
+  } else {
+    fs.mkdirSync(path.dirname(item.out), { recursive: true });
+    fs.writeFileSync(item.out, item.body, "utf8");
+    console.log(`sync-palette: wrote ${path.relative(pkgRoot, item.out)}`);
+  }
+}
+
+// Register every generated theme in package.json (marquee first, then packs).
+const pkgPath = path.join(pkgRoot, "package.json");
+const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+const themesEntry = plan.map((p) => ({
+  label: p.label,
+  uiTheme: p.uiTheme,
+  path: `./themes/${path.basename(p.out)}`,
+}));
+const pkgBody = stableStringify({ ...pkg, contributes: { ...pkg.contributes, themes: themesEntry } });
+if (pkgBody !== fs.readFileSync(pkgPath, "utf8")) {
+  dirty = true;
+  if (checkOnly) {
+    console.error("sync-palette: package.json contributes.themes differs from generated set");
+  } else {
+    fs.writeFileSync(pkgPath, pkgBody, "utf8");
+    console.log("sync-palette: updated package.json contributes.themes");
+  }
+}
+
+if (checkOnly && dirty) {
+  console.error("  Run npm run sync-palette and commit the generated themes.");
+  process.exit(1);
+}
 if (!dirty) {
-  console.log(`sync-palette: kettle themes match ${path.relative(process.cwd(), src)}`);
+  console.log(`sync-palette: ${plan.length} kettle themes match ${path.relative(process.cwd(), src)}`);
 }

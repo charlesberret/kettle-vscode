@@ -266,6 +266,66 @@
         "label": "Kettle Light",
         "uiTheme": "vs",
         "path": "./themes/kettle-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Artichaut Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-artichaut-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Artichaut Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-artichaut-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Cerise Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-cerise-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Cerise Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-cerise-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Cobalt Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-cobalt-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Cobalt Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-cobalt-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Graphite Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-graphite-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Graphite Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-graphite-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Marseille Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-marseille-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Marseille Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-marseille-light-color-theme.json"
+      },
+      {
+        "label": "Kettle Nectar Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/kettle-nectar-dark-color-theme.json"
+      },
+      {
+        "label": "Kettle Nectar Light",
+        "uiTheme": "vs",
+        "path": "./themes/kettle-nectar-light-color-theme.json"
       }
     ],
     "configuration": {
@@ -291,19 +351,19 @@
             "Google Gemini CLI",
             "Custom stream-json CLI"
           ],
-          "markdownDescription": "**Curator provider** \u2014 which agent CLI runs chat, sweeps, and founding. Empty = leave core\u2019s current selection alone until you change it here or on the Desk model pill. Synced to core via `POST /api/curator`."
+          "markdownDescription": "**Curator provider** — which agent CLI runs chat, sweeps, and founding. Empty = leave core’s current selection alone until you change it here or on the Desk model pill. Synced to core via `POST /api/curator`."
         },
         "kettle.chatModel": {
           "type": "string",
           "default": "",
           "order": 2,
-          "markdownDescription": "**Chat / sweep model id** for the active provider (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core\u2019s current chat model. Also controlled by the Desk model pill. Must be an id that provider accepts."
+          "markdownDescription": "**Chat / sweep model id** for the active provider (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core’s current chat model. Also controlled by the Desk model pill. Must be an id that provider accepts."
         },
         "kettle.setupModel": {
           "type": "string",
           "default": "",
           "order": 3,
-          "markdownDescription": "**Setup / founding model id** (interview, propose, refresh-briefs). Empty = use core\u2019s current setup model (or match chat when you set provider)."
+          "markdownDescription": "**Setup / founding model id** (interview, propose, refresh-briefs). Empty = use core’s current setup model (or match chat when you set provider)."
         },
         "kettle.effort": {
           "type": "string",
@@ -323,14 +383,14 @@
           "type": "string",
           "default": "",
           "order": 10,
-          "markdownDescription": "Address of the local Kettle server. Usually left empty \u2014 a running server is found automatically. Set only if yours listens somewhere unusual."
+          "markdownDescription": "Address of the local Kettle server. Usually left empty — a running server is found automatically. Set only if yours listens somewhere unusual."
         },
         "kettle.project": {
           "type": "string",
           "default": "",
           "order": 11,
           "scope": "resource",
-          "markdownDescription": "The Kettle project this window works in. Usually left empty \u2014 the open folder is matched to a registered project automatically. Set it per-workspace when the match is ambiguous."
+          "markdownDescription": "The Kettle project this window works in. Usually left empty — the open folder is matched to a registered project automatically. Set it per-workspace when the match is ambiguous."
         },
         "kettle.confirmSweep": {
           "type": "boolean",
@@ -342,7 +402,7 @@
           "type": "boolean",
           "default": true,
           "order": 21,
-          "markdownDescription": "Ask before bookmarking an approval. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approvals still do not commit \u2014 Sweep does."
+          "markdownDescription": "Ask before bookmarking an approval. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approvals still do not commit — Sweep does."
         },
         "kettle.openNextOnApprove": {
           "type": "boolean",
@@ -354,7 +414,7 @@
           "type": "boolean",
           "default": true,
           "order": 30,
-          "markdownDescription": "When no Kettle core is reachable, start one automatically on the live port (`:4242`). **On by default** \u2014 opening the plugin launches core. Turn off only for attach-only debugging. A shared `:4242` core is not killed when the editor closes."
+          "markdownDescription": "When no Kettle core is reachable, start one automatically on the live port (`:4242`). **On by default** — opening the plugin launches core. Turn off only for attach-only debugging. A shared `:4242` core is not killed when the editor closes."
         },
         "kettle.command": {
           "type": "string",
@@ -379,10 +439,10 @@
           ],
           "enumDescriptions": [
             "Ask each time a selected desk is outside the current window folder",
-            "Always open only that project\u2019s folder (reloads the window; light)",
+            "Always open only that project’s folder (reloads the window; light)",
             "Always use the multi-root Kettle workspace (~/.kettle/Kettle.code-workspace) with registered desks (can get heavy)"
           ],
-          "markdownDescription": "When you pick a Kettle project that isn\u2019t this window\u2019s folder: **switch** to a single-project window, use the shared **Kettle** multi-root workspace, or **ask**. The multi-root workspace can get heavy with many large repos \u2014 change this anytime here."
+          "markdownDescription": "When you pick a Kettle project that isn’t this window’s folder: **switch** to a single-project window, use the shared **Kettle** multi-root workspace, or **ask**. The multi-root workspace can get heavy with many large repos — change this anytime here."
         }
       }
     },
@@ -391,7 +451,7 @@
         "id": "kettle.chat",
         "name": "kettle",
         "fullName": "Kettle",
-        "description": "Curatorial queue sitting \u2014 approve bookmarks rulings; sweep commits.",
+        "description": "Curatorial queue sitting — approve bookmarks rulings; sweep commits.",
         "isSticky": true,
         "commands": [
           {
