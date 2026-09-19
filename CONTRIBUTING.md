@@ -23,13 +23,18 @@ npm test
 
 For live-host work, press `F5` in VS Code and follow [`DEBUG.md`](./docs/DEBUG.md).
 
-If a change affects user-visible copy shared with core, edit
-`kettle-core/static/ui-copy.js` first and then run:
+If a change affects user-visible copy or the marquee palette, edit core first
+(`static/ui-copy.js` / `static/kettle-palette.json`) and then run:
 
 ```sh
 KETTLE_SRC=../kettle-core npm run sync-ui-copy
+KETTLE_SRC=../kettle-core npm run sync-palette
 npm run check-ui-copy
+npm run check-palette
 ```
+
+Do not invent sitting chrome, ritual meanings, or a second type system here.
+Family contract: `../kettle/docs/explanation/viewports.md`.
 
 ## Pull requests
 
