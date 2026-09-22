@@ -728,6 +728,8 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
     let statusLine = "";
     if (!st.connected) {
       statusLine = "Offline — run kettle --web";
+    } else if (interviewing) {
+      statusLine = UI_COPY.editorPlaceholderFounding;
     } else if (proposing) {
       statusLine = UI_COPY.editorPlaceholderProposing;
     } else if (st.projectId) {
@@ -1978,7 +1980,7 @@ function shellHtml(): string {
 
   <section class="section comment-box" id="commentBox">
     <div class="section-label">Comment / Send Back</div>
-    <textarea id="commentText" placeholder="leave a comment on this file or send it back for a rewrite" disabled></textarea>
+    <textarea id="commentText" placeholder="${escapeHtml(UI_COPY.commentPlaceholder)}" disabled></textarea>
     <div class="row">
       <button class="ghost" id="btnCommentCancel" type="button">Cancel</button>
       <button id="btnCommentSave" disabled>Save</button>
@@ -2191,7 +2193,10 @@ function shellHtml(): string {
         `<p class="muted"><strong>${UI_COPY.proposingQueueHintTitle}</strong> — ${UI_COPY.proposingQueueHintBody}</p>`,
       )};
     } else if (founding) {
-      $("brief").innerHTML = '<p class="muted">Answer the checklist below, or chat about the interview questions.</p>';
+      // Canonical founding copy from kettle-core static/ui-copy.js (same source as web).
+      $("brief").innerHTML = ${JSON.stringify(
+        `<p class="muted"><strong>${UI_COPY.foundingQueueHintTitle}</strong> — ${UI_COPY.foundingQueueHintBody}</p>`,
+      )};
     } else if (entry) {
       $("brief").innerHTML = entry.briefHtml || '<p class="muted">No brief prepared.</p>';
     } else if (!msg.projectId) {

@@ -68,6 +68,29 @@ export type Queue = {
   entries?: QueueEntry[];
 };
 
+/** Curator block from GET /api/ping (core `CuratorConfig.as_public_dict`). */
+export type PingCurator = {
+  provider: string;
+  command: string;
+  command_resolved?: string;
+  command_exists?: boolean;
+  models?: Record<string, string>;
+  /** Resolved chat effort (core default `"default"`). */
+  effort?: string;
+  /** Per-task efforts (`setup` / `chat`). */
+  efforts?: Record<string, string>;
+  /** Stream dialect label (e.g. `stream-json`). */
+  stream?: string;
+  capabilities?: {
+    read_only_tier?: boolean;
+    tool_allowlist?: boolean;
+    resume?: boolean;
+    effort?: boolean;
+    fenced_writes?: boolean;
+  };
+  auth_hint?: string;
+};
+
 export type Ping = {
   app: string;
   version?: string;
@@ -78,13 +101,7 @@ export type Ping = {
   started?: string | null;
   projects?: string;
   settings?: string;
-  curator?: {
-    provider: string;
-    command: string;
-    command_resolved?: string;
-    command_exists?: boolean;
-    models?: Record<string, string>;
-  };
+  curator?: PingCurator;
 };
 
 /** One line from an application/x-ndjson curator stream. */
