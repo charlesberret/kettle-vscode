@@ -13,6 +13,26 @@ export type RitualControls = {
 };
 
 /**
+ * Founding phase from the core's `GET /api/interview` beacon.
+ *
+ * `founded` is the core's predicate (charter on disk AND a content entry). Older
+ * cores do not send it; fall back to `status`, never to `has_entries` — entries
+ * alone do not found a desk, and a found run that files entries but fails to
+ * write `PROJECT.md` must stay in founding. kettle-core `docs/SITTING-FLOWS.md` §3.
+ */
+export function foundingPhaseFrom(iv: {
+  status?: string;
+  founded?: boolean;
+  has_proposal?: boolean;
+}): FoundingPhase {
+  if (iv.founded === true) return "founded";
+  if (iv.founded === undefined && iv.status === "founded") return "founded";
+  if (iv.status === "proposing" || iv.has_proposal) return "proposing";
+  if (iv.status === "interviewing") return "interviewing";
+  return "none";
+}
+
+/**
  * Canonical web rule: only the interview phase uses /api/interview.
  * Proposal revision chat is ordinary project chat and must not regress the
  * phase back to interviewing.
