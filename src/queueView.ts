@@ -19,10 +19,13 @@ import {
   entryAbsolutePath,
   entryDisplayPath,
   isApprovedEntry,
+  isHandledEntry,
+  isSetAsideEntry,
   sortQueueForDisplay,
 } from "./project";
 import type { RevealProbe } from "./selectionSync";
 import * as state from "./state";
+import { uiCopy } from "./uiCopy";
 
 /**
  * Custom scheme so Git (and other file:// decorators) do not paint queue rows.
@@ -88,6 +91,8 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
   private lastDataSig = "";
   private lastActiveId: string | undefined;
   private approvedUris = new Set<string>();
+  /** Set-aside rows (Not this): dimmed, not struck — they can be brought back. */
+  private setAsideUris = new Set<string>();
   private readonly _onDidChangeDecorations = new vscode.EventEmitter<
     vscode.Uri | vscode.Uri[] | undefined
   >();
@@ -143,7 +148,7 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
     for (const id of [prevId, nextId]) {
       if (!id) continue;
       const item = this.elementsById.get(id);
-      if (!item?.entry || isApprovedEntry(item.entry)) continue;
+      if (!item?.entry || isHandledEntry(item.entry)) continue;
       const isActive = id === nextId;
       item.contextValue = isActive
         ? "kettle.entry.active"
@@ -179,7 +184,7 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
       return [
         hintItem(
           "Select a Kettle project",
-          "Run Kettle: Select Project or Register New Project",
+          "Run Kettle: Select Project or Kettle: Add Project",
         ),
       ];
     }
@@ -202,10 +207,18 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
         .filter((i) => i.entry && isApprovedEntry(i.entry) && i.resourceUri)
         .map((i) => i.resourceUri!.toString()),
     );
+    const nextSetAside = new Set(
+      items
+        .filter((i) => i.entry && isSetAsideEntry(i.entry) && i.resourceUri)
+        .map((i) => i.resourceUri!.toString()),
+    );
     const approvedChanged =
       nextApproved.size !== this.approvedUris.size ||
-      [...nextApproved].some((u) => !this.approvedUris.has(u));
+      [...nextApproved].some((u) => !this.approvedUris.has(u)) ||
+      nextSetAside.size !== this.setAsideUris.size ||
+      [...nextSetAside].some((u) => !this.setAsideUris.has(u));
     this.approvedUris = nextApproved;
+    this.setAsideUris = nextSetAside;
     this.elementsById.clear();
     for (const item of items) {
       if (item.entry) this.elementsById.set(String(item.entry.id), item);
@@ -372,18 +385,28 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueItem> {
         // Only our queue scheme — never file:// (Git owns those colors).
         if (uri.scheme !== QUEUE_URI_SCHEME) return undefined;
         const key = uri.toString();
-        const byPath = [...self.approvedUris].some((u) => {
-          try {
-            return vscode.Uri.parse(u).path === uri.path;
-          } catch {
-            return false;
-          }
-        });
-        if (!self.approvedUris.has(key) && !byPath) return undefined;
+        const inSet = (set: Set<string>): boolean =>
+          set.has(key) ||
+          [...set].some((u) => {
+            try {
+              return vscode.Uri.parse(u).path === uri.path;
+            } catch {
+              return false;
+            }
+          });
+        if (inSet(self.setAsideUris)) {
+          // Dimmed, not struck: a set-aside file can be brought back.
+          return new vscode.FileDecoration(
+            undefined,
+            "Set aside",
+            new vscode.ThemeColor("disabledForeground"),
+          );
+        }
+        if (!inSet(self.approvedUris)) return undefined;
         // Gray + strike. Path is kettle-q so Git amber cannot win.
         const dec = new vscode.FileDecoration(
           undefined,
-          "Approved (ruling bookmarked)",
+          "Approved",
           new vscode.ThemeColor("disabledForeground"),
         );
         (dec as vscode.FileDecoration & { strikethrough?: boolean }).strikethrough = true;
@@ -405,15 +428,15 @@ function foundingItem(phase: string): QueueItem {
   const item = new QueueItem(
     "founding",
     phase === "interviewing" || phase === "proposing"
-      ? "Founding in progress — open Desk"
-      : "Not founded — click to start interview",
+      ? "Setting up — continue in the Kettle panel"
+      : "Not set up yet — click to start",
   );
-  item.description = "Desk panel";
+  item.description = "Kettle panel";
   item.contextValue = "kettle.founding";
   item.iconPath = new vscode.ThemeIcon("rocket");
   item.command = {
     command: "kettle.queue.select",
-    title: "Begin founding",
+    title: "Set up project",
     arguments: [item],
   };
   return item;
@@ -423,6 +446,7 @@ function entryItem(entry: QueueEntry, projectRoot: string): QueueItem {
   const rel = entryDisplayPath(entry.path, projectRoot);
   const abs = entryAbsolutePath(entry.path, projectRoot);
   const approved = isApprovedEntry(entry);
+  const setAside = !approved && isSetAsideEntry(entry);
   const isActive =
     state.getLastEntry() != null &&
     String(state.getLastEntry()!.id) === String(entry.id);
@@ -448,6 +472,8 @@ function entryItem(entry: QueueEntry, projectRoot: string): QueueItem {
   // Active pending: Approve is the right-side inline check button only.
   if (approved) {
     item.description = ["✓", diffText].filter(Boolean).join("  ");
+  } else if (setAside) {
+    item.description = ["set aside", diffText].filter(Boolean).join("  ");
   } else {
     item.description = diffText || undefined;
   }
@@ -455,8 +481,9 @@ function entryItem(entry: QueueEntry, projectRoot: string): QueueItem {
   item.tooltip = new vscode.MarkdownString(
     [
       `**${rel}**`,
-      approved ? "_Approved (bookmark only — not applied)_" : "",
-      isActive && !approved ? "_Active — use ✓ to approve_" : "",
+      approved ? `_Approved — nothing changes until you press ${uiCopy("sweepLabel")}_` : "",
+      setAside ? `_Set aside — ${uiCopy("notThisUndoLabel")} from the menu to put it back_` : "",
+      isActive && !approved && !setAside ? "_Open — use ✓ to approve_" : "",
       entry.urgency ? `Urgency: ${entry.urgency}` : "",
       entry.diff && (entry.diff.added || entry.diff.removed)
         ? `Diff: +${entry.diff.added || 0} −${entry.diff.removed || 0}`
@@ -471,12 +498,14 @@ function entryItem(entry: QueueEntry, projectRoot: string): QueueItem {
   // Only `kettle.entry.active` gets the inline Approve check (package.json).
   item.contextValue = approved
     ? "kettle.entry.approved"
-    : isActive
+    : setAside
+      ? "kettle.entry.setAside"
+      : isActive
       ? "kettle.entry.active"
       : "kettle.entry";
   item.command = {
     command: "kettle.queue.select",
-    title: "Open entry",
+    title: "Open file",
     arguments: [item],
   };
   return item;

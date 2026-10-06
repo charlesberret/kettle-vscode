@@ -6,18 +6,22 @@
  *    Path click opens the file. Status/urgency/version chrome stays out of the panel.
  * 2. **Brief pane** — curator ask + brief for the selected queue entry
  *    (no "Brief" title; small info control explains the pane).
- * 3. **Ritual actions** — decision-first **Approve · Comment · Sweep** (side-agnostic;
- *    left-aligned, gap collapses as the panel narrows). Unfounded desks use the host
- *    toast / command palette to begin interview — not a fourth ritual button.
+ * 3. **Ritual actions** — decision-first **Approve · Comment · Not this · Finish batch**
+ *    (side-agnostic; left-aligned, gap collapses as the panel narrows). Every label and
+ *    hint comes from core's catalog via ritualParity.ritualControls. Unfounded desks use
+ *    the host toast / command palette to begin interview.
  * 4. **Comment drawer** — opens under the ritual bar into the chat area (POST /api/comment).
  * 5. **Stream** — curator chat / sweep NDJSON (or founding fixed pane).
- * 6. **Sweep steer drawer** — under ritual bar (like Comment); optional thrust then Run sweep.
+ * 6. **Finish batch drawer** — under ritual bar (like Comment); optional steer, then
+ *    Finish batch (a 3-second Undo when kettle.confirmSweep is off).
  * 7. **Composer** — chat only (Enter to send).
  *
- * ## Ritual vocabulary (core, not host Accept Diff)
+ * ## Ritual vocabulary (core, not host Accept Diff). On screen: catalog words only.
  * - **Approve** = bookmark a ruling (`/api/approve`) — does not apply or commit.
  * - **Comment** = send-back note on the entry (`/api/comment`).
- * - **Sweep** = commit pass for the sitting (`/api/sweep`), optional thrust steer.
+ * - **Not this** = set the entry aside (`/api/set-aside`); **Bring back** undoes it.
+ * - **Finish batch** = the sweep (`/api/sweep`), optional thrust steer. "Sweep" stays
+ *   an identifier; it never reaches the screen.
  *
  * HTML is set once; updates go through postMessage so composer state survives
  * streaming reflows. Host deps in `DeskPanelDeps` own HTTP and VS Code chrome.
@@ -38,14 +42,21 @@ import {
   type ConfirmSection,
 } from "./confirmCard";
 import { BUILD_ID } from "./debug";
-import { entryDisplayPath, isApprovedEntry } from "./project";
+import {
+  entryDisplayPath,
+  isApprovedEntry,
+  isHandledEntry,
+  isSetAsideEntry,
+} from "./project";
 import { ritualDampenForZoomLevel } from "./ritualZoom";
 import {
   chatModeForPhase,
+  deskStatusLine,
+  isProposalEntry,
   ritualControls,
 } from "./ritualParity";
 import * as state from "./state";
-import { UI_COPY } from "./uiCopy";
+import { UI_COPY, uiCopy, uiState } from "./uiCopy";
 
 /** Shown in Desk header — same source as debug.BUILD_ID (package.json version). */
 const DESK_UI_BUILD = BUILD_ID;
@@ -57,6 +68,10 @@ export { projectSummarySentence, stripMarkdownToPlain } from "./briefText";
 export type DeskPanelDeps = {
   approve: (entry: QueueEntry) => Promise<void>;
   comment: (entry: QueueEntry, text: string) => Promise<void>;
+  /** Not this / Bring back (POST /api/set-aside). One action, no prompt. */
+  setAside: (entry: QueueEntry, undo: boolean) => Promise<void>;
+  /** kettle.confirmSweep — off means Finish batch arms a 3-second Undo instead. */
+  confirmSweep: () => boolean;
   sweep: (opts?: {
     thrust?: string;
     onEvent?: (ev: StreamEvent) => void;
@@ -263,8 +278,15 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
             if (!entry) return;
             const text = String(msg.text ?? "");
             await this.deps.comment(entry, text);
-            this.pushSys(text.trim() ? "Comment saved on desk." : "Comment cleared.");
+            this.pushSys(text.trim() ? "Comment saved." : "Comment cleared.");
             this.pushStream(true);
+            break;
+          }
+          case "notThis": {
+            // One action, no prompt: Not this on a pending file, Bring back on a
+            // set-aside one. The host owns the call and surfaces core's refusal.
+            if (!entry || isProposalEntry(entry)) return;
+            await this.deps.setAside(entry, isSetAsideEntry(entry));
             break;
           }
           case "sweep": {
@@ -415,7 +437,7 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
             );
             this.streamLines.push({
               kind: "sys",
-              text: "Answers submitted — drafting the Desk Proposal…",
+              text: "Answers sent — the agent is writing the proposal…",
               id: "proposal-draft",
             });
             this.post({
@@ -724,28 +746,28 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
     const proposing = state.isProposing();
     // "founding" = interview-only chrome (hide ritual). Proposing keeps Approve.
     const founding = interviewing;
-    // Quiet status line for the webview (avoid "no project · Kettle · disconnected").
-    let statusLine = "";
-    if (!st.connected) {
-      statusLine = "Offline — run kettle --web";
-    } else if (interviewing) {
-      statusLine = UI_COPY.editorPlaceholderFounding;
-    } else if (proposing) {
-      statusLine = UI_COPY.editorPlaceholderProposing;
-    } else if (st.projectId) {
-      statusLine = st.projectId;
-    } else {
-      statusLine = "No project selected";
-    }
+    const projMeta = this.projects.find((p) => p.id === st.projectId);
+    // Status line from the catalog's states (line register); the project's name
+    // when no state applies. Never a sentence of our own for a catalog state.
+    const statusLine = deskStatusLine({
+      connected: st.connected,
+      hasProject: !!st.projectId,
+      projectName: (projMeta?.name || st.projectId || "").trim(),
+      phase: st.foundingPhase,
+      activity: state.getDeskActivity(),
+      hasEntry: !!entry,
+    });
     const approved = entry ? isApprovedEntry(entry) : false;
+    const setAside = entry ? isSetAsideEntry(entry) : false;
     const ritual = ritualControls({
       phase: st.foundingPhase,
       hasProject: !!st.projectId,
       hasEntry: !!entry,
       approved,
       streaming: this.streaming,
+      setAside,
+      isProposal: isProposalEntry(entry),
     });
-    const projMeta = this.projects.find((p) => p.id === st.projectId);
     const projectSummary =
       st.projectId && !entry && !interviewing && !proposing
         ? projectSummarySentence(
@@ -769,6 +791,7 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
       projectSummary,
       noEntryBriefBody: UI_COPY.noEntryBriefBody,
       ritual,
+      confirmSweep: this.deps.confirmSweep(),
       interviewFreeze: this.interviewFreeze,
       chatPlaceholder: proposing
         ? UI_COPY.chatPlaceholderProposing
@@ -786,12 +809,14 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
               : entry.path,
             status: entry.status || "pending",
             approved,
+            setAside,
+            handled: isHandledEntry(entry),
             urgency: entry.urgency || "",
             // Takeaway line (formerly shown as "ask") — plain text, no raw GFM.
             takeaway: stripMarkdownToPlain(entry.ask || ""),
             ask: entry.ask || "",
             brief: entry.brief || entry.ask || "",
-            briefHtml: renderMarkdown(entry.brief || entry.ask || "(no brief prepared)"),
+            briefHtml: renderMarkdown(entry.brief || entry.ask || "(no summary yet)"),
             comment: entry.comment || "",
             diff: entry.diff ?? null,
           }
@@ -928,11 +953,13 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
     this.abort = new AbortController();
     this.streaming = true;
     // No "— found —" / "— interview —" / "— sweep —" chrome in the stream.
-    // The agent output is enough; label is only for host orchestration.
-    void label;
+    // The label picks the catalog state a long stream is in (status bar + activity).
+    const activity =
+      label === "sweep" ? "sweeping" : label === "found" ? "founding" : undefined;
+    if (activity) state.setDeskActivity(activity);
     this.streamLines.push({ kind: "agent", text: "", streaming: true });
     this.post({ type: "streaming", streaming: true });
-    this.setActivity("working…");
+    this.setActivity(activity ? uiState(activity, "line") : "working…");
     this.pushState(); // re-enable lockstep (dim ritual buttons while streaming)
     this.pushStream(true);
     try {
@@ -951,6 +978,7 @@ export class DeskPanelProvider implements vscode.WebviewViewProvider {
     } finally {
       this.streaming = false;
       this.abort = undefined;
+      if (activity && state.getDeskActivity() === activity) state.setDeskActivity("idle");
       this.clearActivity();
       this.maybeUpgradeLastAgentToCard();
       this.post({ type: "streaming", streaming: false });
@@ -1121,7 +1149,7 @@ function escapeHtml(s: string): string {
 
 /** Minimal GFM-ish markdown → safe HTML for briefs and stream bubbles. */
 export function renderMarkdown(src: string): string {
-  if (!src.trim()) return '<p class="muted">No brief prepared.</p>';
+  if (!src.trim()) return '<p class="muted">No summary yet.</p>';
   let s = escapeHtml(src);
   s = s.replace(/```([\s\S]*?)```/g, (_m, code: string) =>
     `<pre class="code"><code>${String(code).trim()}</code></pre>`,
@@ -1152,7 +1180,7 @@ export function renderMarkdown(src: string): string {
   return s;
 }
 
-function shellHtml(): string {
+export function shellHtml(): string {
   // Icons + CSS + client logic; content filled via postMessage.
   return `<!DOCTYPE html>
 <html lang="en">
@@ -1218,6 +1246,7 @@ function shellHtml(): string {
   /* Ritual buttons: ~20% smaller than the 12px/28px baseline */
   #btnApprove,
   #btnCommentToggle,
+  #btnNotThis,
   #btnSweep {
     font-size: 9.6px;
     font-weight: 500;
@@ -1448,8 +1477,10 @@ function shellHtml(): string {
     align-items: center;
     container-type: inline-size;
     container-name: ritual;
-    /* Was clamp(6px, 4cqi, 14px) — double the span; floor stays 6px. */
-    gap: clamp(6px, 8cqi, 28px);
+    /* Four controls since Not this: back to the narrower span so one row holds
+       at a default sidebar width (was 8cqi/28px with three). */
+    column-gap: clamp(6px, 3%, 16px);
+    row-gap: 6px;
     padding: 8px 12px;
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
@@ -1482,6 +1513,33 @@ function shellHtml(): string {
     filter: brightness(1.08);
     background: color-mix(in srgb, var(--ritual-comment) 24%, transparent);
   }
+  /* Not this: a correction, not the action a batch is built around — the least
+     emphasis of the four (no tint, no icon, muted label). */
+  #btnNotThis {
+    background: transparent;
+    border-color: transparent;
+    color: var(--muted);
+    padding: 4.8px 3px;
+  }
+  #btnNotThis:hover:not(:disabled) {
+    filter: none;
+    color: var(--fg);
+    border-color: var(--border);
+  }
+  /* Narrow panel: Finish batch takes the catalog's short form (sweepLabel.short,
+     "same meaning, fewer words"); narrower still, the buttons tighten. */
+  .btn-label-short { display: none; }
+  @container ritual (max-width: 359px) {
+    #btnSweep .btn-label { display: none; }
+    #btnSweep .btn-label-short { display: inline; }
+  }
+  @container ritual (max-width: 319px) {
+    #btnApprove, #btnCommentToggle, #btnSweep { padding-left: 6px; padding-right: 6px; }
+    /* Words over icons when space runs out: the label is the instruction. */
+    #btnApprove .btn-ico, #btnCommentToggle .btn-ico, #btnSweep .btn-ico { display: none; }
+  }
+  /* A set-aside file reads as handled: dimmed and italic, like its queue row. */
+  body.setaside #path { font-style: italic; opacity: 0.7; }
   #btnSweep {
     /* Deeper/more saturated than testing-iconPassed so label holds on light themes
        without washing out on dark (theme green is often too light on white). */
@@ -1526,6 +1584,13 @@ function shellHtml(): string {
   #btnSweepGo .btn-ico .icon-svg {
     width: 11px; height: 11px; display: block; transform: translateX(1px);
   }
+  /* Confirmation off: Finish batch arms for 3 s and reads Undo; a press cancels. */
+  #btnSweepGo.arming {
+    background: color-mix(in srgb, var(--ritual-sweep) 30%, transparent);
+    font-weight: 600;
+  }
+  #btnSweepGo.arming .btn-ico { display: none; }
+  .sweep-body { font-size: 11px; color: var(--muted); margin: 0 0 6px; }
   /* Legacy empty-cta kept in DOM for one-shot host messages; hidden — project pill is the CTA. */
   .empty-cta { display: none !important; }
   /* No project: one control (header pill), one quiet hint (brief). No path / no second button. */
@@ -1856,11 +1921,13 @@ function shellHtml(): string {
   body.interviewing .section.comment-box,
   body.interviewing #btnApprove,
   body.interviewing #btnCommentToggle,
+  body.interviewing #btnNotThis,
   body.interviewing #btnSweep { display: none; }
   body.interviewing .empty-cta,
   body.interviewing .sweep-panel { display: none !important; }
   /* Proposal phase: Approve is the founding gate — match web midfoot pulse. */
   body.proposing #btnCommentToggle,
+  body.proposing #btnNotThis,
   body.proposing #btnSweep { display: none; }
   body.proposing .comment-box,
   body.proposing .sweep-panel { display: none !important; }
@@ -1949,50 +2016,52 @@ function shellHtml(): string {
       </div>
     </div>
     <div class="meta">
-      <div class="path" id="path">No entry selected</div>
+      <div class="path" id="path">${escapeHtml(uiState("attached", "line"))}</div>
     </div>
   </header>
 
   <div class="empty-cta" id="emptyCta">
-    <button class="primary" id="btnSelectProject" title="Select a registered project or register a new folder">${icon("file")} Select or register project</button>
-    <p class="hint">No desk is bound to this window. Pick a registered project, or register any folder under your home (adopts existing .kettle or starts the founding interview).</p>
+    <button class="primary" id="btnSelectProject" title="Select a project or add a new folder">${icon("file")} Select or add project</button>
+    <p class="hint">No project is open in this window. Pick one, or add any folder under your home (Kettle picks up an existing .kettle folder, or starts setting the project up).</p>
   </div>
 
   <section class="section brief-sec">
     <button type="button" class="brief-info-btn" id="btnBriefInfo"
-      aria-label="About this brief" aria-expanded="false" aria-controls="briefInfoTip"
-      title="About this brief">i</button>
+      aria-label="About this summary" aria-expanded="false" aria-controls="briefInfoTip"
+      title="About this summary">i</button>
     <div class="brief-info-tip" id="briefInfoTip" role="note" hidden>
       <strong>What is this?</strong>
-      A short orientation for the open queue file: what it is, what to look for,
-      and a plain-English ask. Your curator writes it when the queue is stocked
-      or briefs are refreshed, so you can re-enter cold without rereading the whole document.
+      A short summary of the open file: what it is, what to look for, and the
+      question the agent has for you. The agent writes it when it lines up a batch
+      or refreshes summaries, so you can pick up a file without rereading all of it.
     </div>
     <div class="takeaway" id="takeaway" hidden></div>
     <div class="brief" id="brief"><p class="muted">Select a project to begin.</p></div>
   </section>
 
   <div class="actions actions-ritual">
-    <button id="btnApprove" disabled title="Bookmark a ruling — does not apply or commit" data-label-default="Approve" data-label-propose="Found Desk"><span class="btn-ico">${icon("check")}</span><span class="btn-label">Approve</span></button>
-    <button id="btnCommentToggle" disabled title="Leave a comment or send back for a rewrite"><span class="btn-ico">${icon("comment")}</span>Comment</button>
-    <button id="btnSweep" title="Commit pass for the sitting — not approve"><span class="btn-ico">${icon("play")}</span>Sweep</button>
+    <button id="btnApprove" disabled title="${escapeHtml(uiCopy("approveHint"))}"><span class="btn-ico">${icon("check")}</span><span class="btn-label">${escapeHtml(uiCopy("approveLabel"))}</span></button>
+    <button id="btnCommentToggle" disabled title="${escapeHtml(uiCopy("commentHint"))}"><span class="btn-ico">${icon("comment")}</span><span class="btn-label">${escapeHtml(uiCopy("commentLabel"))}</span></button>
+    <button id="btnNotThis" disabled title="${escapeHtml(uiCopy("notThisHint"))}"><span class="btn-label">${escapeHtml(uiCopy("notThisLabel"))}</span></button>
+    <button id="btnSweep" title="${escapeHtml(uiCopy("sweepHint"))}"><span class="btn-ico">${icon("play")}</span><span class="btn-label">${escapeHtml(uiCopy("sweepLabel"))}</span><span class="btn-label-short">${escapeHtml(uiCopy("sweepLabel", { short: true }))}</span></button>
   </div>
 
   <section class="section comment-box" id="commentBox">
-    <div class="section-label">Comment / Send Back</div>
+    <div class="section-label">${escapeHtml(uiCopy("commentLabel"))}</div>
     <textarea id="commentText" placeholder="${escapeHtml(UI_COPY.commentPlaceholder)}" disabled></textarea>
     <div class="row">
       <button class="ghost" id="btnCommentCancel" type="button">Cancel</button>
-      <button id="btnCommentSave" disabled>Save</button>
+      <button id="btnCommentSave" disabled>${escapeHtml(uiCopy("commentSaveLabel"))}</button>
     </div>
   </section>
 
   <section class="section sweep-panel" id="sweepPanel">
-    <div class="section-label">Steer for This Pass</div>
-    <textarea class="thrust" id="thrust" rows="2" placeholder="What's most on your mind as you close the sitting?"></textarea>
+    <div class="section-label">${escapeHtml(uiCopy("sweepConfirmTitle"))}</div>
+    <p class="sweep-body">${escapeHtml(uiCopy("sweepConfirmBody"))}</p>
+    <textarea class="thrust" id="thrust" rows="2" placeholder="${escapeHtml(uiCopy("sweepThrustPlaceholder"))}"></textarea>
     <div class="row">
       <button class="ghost" id="btnSweepCancel" type="button">Cancel</button>
-      <button id="btnSweepGo" type="button"><span class="btn-ico">${icon("play")}</span>Run sweep</button>
+      <button id="btnSweepGo" type="button"><span class="btn-ico">${icon("play")}</span><span class="btn-label">${escapeHtml(uiCopy("sweepLabel"))}</span></button>
     </div>
   </section>
 
@@ -2046,8 +2115,34 @@ function shellHtml(): string {
     });
   }
 
+  /** Set a ritual button's words from the host; keep the shipped words if absent. */
+  function setRitualLabel(id, label, hint) {
+    const el = $(id);
+    if (!el) return;
+    const labelEl = el.querySelector(".btn-label");
+    if (label && labelEl) labelEl.textContent = label;
+    if (hint) el.title = hint;
+  }
+
   function setCommentOpen(open) {
     document.body.classList.toggle("comment-open", !!open);
+  }
+
+  // Finish batch with confirmation off: the drawer's button arms for 3 seconds and
+  // reads Undo (catalog sweepUndoLabel); a second press cancels. With confirmation
+  // on, the host asks in a modal instead.
+  var confirmSweep = true;
+  var sweepLabel = ${JSON.stringify(uiCopy("sweepLabel"))};
+  var sweepUndoLabel = ${JSON.stringify(uiCopy("sweepUndoLabel"))};
+  var sweepArm = null;
+
+  function cancelSweepArm() {
+    if (sweepArm) clearTimeout(sweepArm);
+    sweepArm = null;
+    const b = $("btnSweepGo");
+    if (!b) return;
+    b.classList.remove("arming");
+    setRitualLabel("btnSweepGo", sweepLabel, "");
   }
 
   // Keep last steer text so a failed sweep can reopen without losing the note.
@@ -2146,7 +2241,7 @@ function shellHtml(): string {
 
     const pathEl = $("path");
     if (founding) {
-      pathEl.textContent = "Founding interview";
+      pathEl.textContent = ${JSON.stringify(uiCopy("foundingQueueHintTitle"))};
       pathEl.classList.remove("clickable");
       pathEl.title = "";
     } else if (entry) {
@@ -2154,7 +2249,7 @@ function shellHtml(): string {
       pathEl.classList.add("clickable");
       pathEl.title = entry.path ? ("Open in editor — " + entry.path) : "Open in editor";
     } else if (msg.projectId) {
-      pathEl.textContent = "No entry selected";
+      pathEl.textContent = ${JSON.stringify(uiState("attached", "line"))};
       pathEl.classList.remove("clickable");
       pathEl.title = "";
     } else {
@@ -2198,7 +2293,7 @@ function shellHtml(): string {
         `<p class="muted"><strong>${UI_COPY.foundingQueueHintTitle}</strong> — ${UI_COPY.foundingQueueHintBody}</p>`,
       )};
     } else if (entry) {
-      $("brief").innerHTML = entry.briefHtml || '<p class="muted">No brief prepared.</p>';
+      $("brief").innerHTML = entry.briefHtml || '<p class="muted">No summary yet.</p>';
     } else if (!msg.projectId) {
       // Project pill is the only CTA — no duplicate copy.
       $("brief").innerHTML = "";
@@ -2209,7 +2304,7 @@ function shellHtml(): string {
         || ${JSON.stringify(UI_COPY.noEntryBriefBody)};
       // Fallback quote if host sent no projectSummary.
       if (!takeawayText) {
-        const summary = "Project “" + String(msg.projectId) + "” is open on this desk.";
+        const summary = "Project “" + String(msg.projectId) + "” is open.";
         takeaway.hidden = false;
         takeaway.textContent = summary;
       }
@@ -2230,35 +2325,42 @@ function shellHtml(): string {
     const hasProject = !!msg.projectId;
     const approved = !!(entry && (entry.approved || entry.status === "approved"));
     const fallbackFileAct = !!entry && !founding && !streaming;
+    // Labels and hints come from the host (core's catalog via ritualParity.ts);
+    // the fallback keeps the shipped catalog words for an old host message.
     const ritual = msg.ritual || {
       canApprove: proposing ? !!entry && !streaming : fallbackFileAct && !approved,
       canComment: fallbackFileAct && !proposing,
-      canSweep: hasProject && !founding && !proposing && !streaming,
-      approveLabel: proposing ? "Found Desk" : "Approve"
+      canNotThis: false,
+      canSweep: hasProject && !founding && !proposing && !streaming
     };
     const canApprove = !!ritual.canApprove;
     const canComment = !!ritual.canComment;
+    const canNotThis = !!ritual.canNotThis;
     const canSweep = !!ritual.canSweep;
+    confirmSweep = msg.confirmSweep !== false;
+    sweepLabel = ritual.sweepLabel || sweepLabel;
+    sweepUndoLabel = ritual.sweepUndoLabel || sweepUndoLabel;
 
     document.body.classList.toggle("nofile", !entry && !proposing);
     document.body.classList.toggle("noproj", !hasProject);
     document.body.classList.toggle("streaming", streaming);
+    document.body.classList.toggle("setaside", !!(entry && entry.setAside));
 
-    const btnApprove = $("btnApprove");
-    const labelEl = btnApprove.querySelector(".btn-label");
-    const defaultLabel = btnApprove.getAttribute("data-label-default") || "Approve";
-    const proposeLabel = btnApprove.getAttribute("data-label-propose") || "Found Desk";
-    if (labelEl) {
-      labelEl.textContent =
-        ritual.approveLabel || (proposing ? proposeLabel : defaultLabel);
-    }
-    btnApprove.title = proposing
-      ? "Approve this proposal and found the desk (first queue batch)"
-      : "Bookmark a ruling — does not apply or commit";
+    setRitualLabel("btnApprove", ritual.approveLabel, ritual.approveHint);
+    setRitualLabel("btnCommentToggle", ritual.commentLabel, ritual.commentHint);
+    setRitualLabel("btnNotThis", ritual.notThisLabel, ritual.notThisHint);
+    setRitualLabel("btnSweep", ritual.sweepLabel, ritual.sweepHint);
+    const sweepShortEl = $("btnSweep").querySelector(".btn-label-short");
+    if (sweepShortEl && ritual.sweepLabelShort) sweepShortEl.textContent = ritual.sweepLabelShort;
+    if (!sweepArm) setRitualLabel("btnSweepGo", ritual.sweepLabel, "");
 
     setDisabled(["btnApprove"], !canApprove);
     setDisabled(["btnCommentToggle", "btnCommentSave", "commentText"], !canComment);
-    setDisabled(["btnSweep", "btnSweepGo", "thrust"], !canSweep);
+    setDisabled(["btnNotThis"], !canNotThis);
+    // An armed Undo stays pressable: it is the only way to cancel the countdown.
+    setDisabled(["btnSweep", "thrust"], !canSweep);
+    if (!sweepArm) setDisabled(["btnSweepGo"], !canSweep);
+    if (!canSweep && sweepArm) cancelSweepArm();
     setDisabled(["chatIn"], streaming);
     $("btnModel").disabled = streaming || !modelList.length;
 
@@ -2279,7 +2381,7 @@ function shellHtml(): string {
     const submitted = !!opts.submitted;
     let h = '<div class="msg confirm' + (submitted ? " submitted" : "") + '"'
       + (submitted ? ' data-submitted="1"' : "") + '>'
-      + '<div class="cc-title">Desk Confirmation Card</div>';
+      + '<div class="cc-title">Setup Questions</div>';
     (card.sections || []).forEach(function(sec, si) {
       const stem = cleanStem(sec.stem);
       h += '<div class="cc-section" data-num="' + esc(sec.num) + '" data-id="' + esc(sec.id)
@@ -2620,7 +2722,7 @@ function shellHtml(): string {
     let html = "";
     if (!modelList.length) {
       html += '<div class="proj-opt empty" role="option" aria-disabled="true">'
-        + "No models — check core curator settings</div>";
+        + "No models — check the agent settings in Kettle</div>";
     } else {
       modelList.forEach(function(m) {
         const active = m.id === activeModelId ? " active" : "";
@@ -2808,9 +2910,14 @@ function shellHtml(): string {
     setCommentOpen(false);
   });
 
-  // Sweep: toggle steer drawer under the ritual bar (same pattern as Comment).
+  // Not this / Bring back: one press, no prompt. The host decides which by the
+  // file's status and refreshes the queue.
+  $("btnNotThis").addEventListener("click", function() { post("notThis"); });
+
+  // Finish batch: toggle the steer drawer under the ritual bar (same pattern as Comment).
   $("btnSweep").addEventListener("click", function() {
     const open = !document.body.classList.contains("sweep-open");
+    if (!open) cancelSweepArm();
     setSweepOpen(open);
     if (open) {
       setCommentOpen(false);
@@ -2818,13 +2925,27 @@ function shellHtml(): string {
     }
   });
   $("btnSweepCancel").addEventListener("click", function() {
+    cancelSweepArm();
     setSweepOpen(false, { clear: true });
   });
-  $("btnSweepGo").addEventListener("click", function() {
+  function startSweep() {
     const thrust = $("thrust").value;
     lastThrustDraft = thrust; // keep until success (host posts sweepDone)
     setSweepOpen(false); // hide drawer but keep draft
     post("sweep", { thrust: thrust });
+  }
+  $("btnSweepGo").addEventListener("click", function() {
+    if (sweepArm) { cancelSweepArm(); return; } // second press during countdown = Undo
+    if (confirmSweep) { startSweep(); return; }  // host confirms in a modal
+    const b = $("btnSweepGo");
+    b.classList.add("arming");
+    setRitualLabel("btnSweepGo", sweepUndoLabel, "");
+    sweepArm = setTimeout(function() {
+      sweepArm = null;
+      b.classList.remove("arming");
+      setRitualLabel("btnSweepGo", sweepLabel, "");
+      startSweep();
+    }, 3000);
   });
   $("thrust").addEventListener("keydown", function(e) {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {

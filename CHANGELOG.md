@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Added
+
+- **Not this** — a fourth, quiet control between Comment and Finish batch.
+  One press sets the open file aside (`POST /api/set-aside`); on a set-aside
+  file it reads **Bring back**. Off while setting up, and on the proposal
+  (core's refusal is shown as written). Also in the queue's context menu
+  (`kettle.notThis`, `kettle.bringBack`).
+- Finish batch with confirmation off arms for 3 seconds and reads **Undo**;
+  a second press cancels.
+- `sync-ui-copy` carries core's `states` (`line` / `short` / `full`) into
+  `src/uiCopy.ts` as `UI_STATES` / `uiState()`.
+
+### Changed
+
+- Every ritual label and hint comes from core's catalog. **Sweep** is
+  **Finish batch** on screen; **Found Desk** is retired — the control reads
+  **Approve** while proposing too. Command ids, settings keys and API routes
+  are unchanged.
+- Handled files are approved, sent back for rework, or set aside: all three
+  sink to the bottom of the queue and are skipped when opening the next file.
+  Set-aside rows are dimmed, not struck.
+- Status text comes from the catalog's states: the status bar shows the
+  connection, then the project's state while it is setting up, finishing a
+  batch, or broken. A queue that core cannot read (409/404) marks that
+  project broken instead of dropping the connection.
+- A finished setup is announced only when core reports the project founded;
+  otherwise the proposal stays open.
+- Plain words in every extension-owned string — command titles, settings
+  descriptions, notifications, the queue list, the chat helper and the
+  README: project, file, summary, decision, agent, setting up. Commands with a
+  `Kettle` category no longer repeat `Kettle:` in their title.
+- `src/uiCopy.ts` regenerated from core's current catalog.
+
 ## 0.1.1 — 2026-09-12
 
 ### Added

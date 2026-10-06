@@ -41,6 +41,8 @@
     "onCommand:kettle.ping",
     "onCommand:kettle.restartCore",
     "onCommand:kettle.comment",
+    "onCommand:kettle.notThis",
+    "onCommand:kettle.bringBack",
     "onCommand:kettle.selectProject",
     "onCommand:kettle.registerProject",
     "onCommand:kettle.jumpActive",
@@ -61,7 +63,7 @@
       },
       {
         "command": "kettle.restartCore",
-        "title": "Kettle: Restart Core",
+        "title": "Restart Core",
         "icon": "$(debug-restart)",
         "category": "Kettle"
       },
@@ -71,29 +73,39 @@
       },
       {
         "command": "kettle.openEntry",
-        "title": "Kettle: Open Entry"
+        "title": "Kettle: Open File"
       },
       {
         "command": "kettle.approve",
-        "title": "Kettle: Approve Entry",
+        "title": "Approve File",
         "icon": "$(check)",
         "category": "Kettle"
       },
       {
         "command": "kettle.comment",
-        "title": "Kettle: Comment on Entry",
+        "title": "Comment on File",
         "icon": "$(comment)",
         "category": "Kettle"
       },
       {
+        "command": "kettle.notThis",
+        "title": "Not this",
+        "category": "Kettle"
+      },
+      {
+        "command": "kettle.bringBack",
+        "title": "Bring back",
+        "category": "Kettle"
+      },
+      {
         "command": "kettle.sweep",
-        "title": "Kettle: Sweep Project",
+        "title": "Finish Batch",
         "icon": "$(run-all)",
         "category": "Kettle"
       },
       {
         "command": "kettle.refreshBriefs",
-        "title": "Kettle: Refresh Briefs on Current Queue",
+        "title": "Refresh Summaries",
         "icon": "$(book)",
         "category": "Kettle"
       },
@@ -112,7 +124,7 @@
       },
       {
         "command": "kettle.registerProject",
-        "title": "Kettle: Register New Project",
+        "title": "Add Project",
         "category": "Kettle"
       },
       {
@@ -122,36 +134,36 @@
       },
       {
         "command": "kettle.jumpActive",
-        "title": "Kettle: Jump to Active Editor Entry"
+        "title": "Kettle: Jump to Open File in Queue"
       },
       {
         "command": "kettle.showDesk",
-        "title": "Kettle: Show Desk Panel"
+        "title": "Kettle: Show Panel"
       },
       {
         "command": "kettle.beginFounding",
-        "title": "Kettle: Begin Founding Interview"
+        "title": "Kettle: Set Up Project"
       },
       {
         "command": "kettle.compactSession",
-        "title": "Kettle: Compact Session",
+        "title": "Compact Session",
         "category": "Kettle"
       },
       {
         "command": "kettle.debug",
-        "title": "Kettle: Debug",
+        "title": "Debug",
         "icon": "$(debug-console)",
         "category": "Kettle"
       },
       {
         "command": "kettle.showDebugLog",
-        "title": "Kettle: Debug",
+        "title": "Debug",
         "icon": "$(debug-console)",
         "category": "Kettle"
       },
       {
         "command": "kettle.debugSelectionSync",
-        "title": "Kettle: Debug",
+        "title": "Debug",
         "icon": "$(debug-alt)",
         "category": "Kettle"
       },
@@ -233,6 +245,22 @@
           "command": "kettle.queue.approve",
           "when": "view == kettle.queue && (viewItem == kettle.entry || viewItem == kettle.entry.active)",
           "group": "0_kettle@1"
+        },
+        {
+          "command": "kettle.notThis",
+          "when": "view == kettle.queue && (viewItem == kettle.entry || viewItem == kettle.entry.active)",
+          "group": "0_kettle@3"
+        },
+        {
+          "command": "kettle.bringBack",
+          "when": "view == kettle.queue && viewItem == kettle.entry.setAside",
+          "group": "0_kettle@3"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "kettle.bringBack",
+          "when": "kettle.hasProject"
         }
       ]
     },
@@ -351,19 +379,19 @@
             "Google Gemini CLI",
             "Custom stream-json CLI"
           ],
-          "markdownDescription": "**Curator provider** — which agent CLI runs chat, sweeps, and founding. Empty = leave core’s current selection alone until you change it here or on the Desk model pill. Synced to core via `POST /api/curator`."
+          "markdownDescription": "**Agent** — which agent CLI runs chat, setup, and Finish batch. Empty = leave core’s current selection alone until you change it here or on the Kettle panel’s model pill. Synced to core via `POST /api/curator`."
         },
         "kettle.chatModel": {
           "type": "string",
           "default": "",
           "order": 2,
-          "markdownDescription": "**Chat / sweep model id** for the active provider (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core’s current chat model. Also controlled by the Desk model pill. Must be an id that provider accepts."
+          "markdownDescription": "**Chat and Finish batch model id** for the active agent (e.g. `sonnet`, `opus`, `grok-4.5`, `grok-composer-2.5-fast`, `gemini-2.5-pro`). Empty = use core’s current chat model. Also controlled by the Kettle panel’s model pill. Must be an id that agent accepts."
         },
         "kettle.setupModel": {
           "type": "string",
           "default": "",
           "order": 3,
-          "markdownDescription": "**Setup / founding model id** (interview, propose, refresh-briefs). Empty = use core’s current setup model (or match chat when you set provider)."
+          "markdownDescription": "**Setup model id** (setup questions, writing the proposal, refreshing summaries). Empty = use core’s current setup model (or match chat when you set the agent)."
         },
         "kettle.effort": {
           "type": "string",
@@ -377,7 +405,7 @@
             "high",
             "max"
           ],
-          "markdownDescription": "Reasoning **effort** passed to providers that support it (Claude, Grok, Codex). Empty = core default."
+          "markdownDescription": "Reasoning **effort** passed to agents that support it (Claude, Grok, Codex). Empty = core default."
         },
         "kettle.serverUrl": {
           "type": "string",
@@ -396,19 +424,19 @@
           "type": "boolean",
           "default": true,
           "order": 20,
-          "markdownDescription": "Ask before a sweep closes the sitting. A sweep applies approved work, writes the session log, and restocks the queue."
+          "markdownDescription": "Ask before **Finish batch** runs. Finishing applies your decisions, saves a record of this round, and lines up the next files. Off: the button waits 3 seconds and reads **Undo**, so you can still cancel."
         },
         "kettle.confirmApprove": {
           "type": "boolean",
           "default": true,
           "order": 21,
-          "markdownDescription": "Ask before bookmarking an approval. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approvals still do not commit — Sweep does."
+          "markdownDescription": "Ask before marking a file approved. Turn off (or choose **Don't ask again** on the dialog) to approve with one click. Approving changes nothing until you press **Finish batch**."
         },
         "kettle.openNextOnApprove": {
           "type": "boolean",
           "default": true,
           "order": 22,
-          "markdownDescription": "After approving a queue entry, select and open the next pending entry (approved rows move to the bottom of the Kettle queue list)."
+          "markdownDescription": "After **Approve** or **Not this**, select and open the next file still waiting (files you have decided on move to the bottom of the Kettle queue)."
         },
         "kettle.autoStartServer": {
           "type": "boolean",
@@ -426,7 +454,7 @@
           "type": "boolean",
           "default": true,
           "order": 32,
-          "markdownDescription": "When the extension activates, focus **Kettle Desk** in the Secondary Side Bar (left in Cursor, right in default VS Code). Brings the sitting forward over peer tabs such as Agent; does not remove those tabs. Turn off if you prefer Agent (or another view) to stay selected."
+          "markdownDescription": "When the extension activates, focus the **Kettle** panel in the Secondary Side Bar (left in Cursor, right in default VS Code). Brings it forward over peer tabs such as Agent; does not remove those tabs. Turn off if you prefer Agent (or another view) to stay selected."
         },
         "kettle.projectSwitchMode": {
           "type": "string",
@@ -438,9 +466,9 @@
             "kettleWorkspace"
           ],
           "enumDescriptions": [
-            "Ask each time a selected desk is outside the current window folder",
+            "Ask each time a selected project is outside the current window folder",
             "Always open only that project’s folder (reloads the window; light)",
-            "Always use the multi-root Kettle workspace (~/.kettle/Kettle.code-workspace) with registered desks (can get heavy)"
+            "Always use the multi-root Kettle workspace (~/.kettle/Kettle.code-workspace) with your Kettle projects (can get heavy)"
           ],
           "markdownDescription": "When you pick a Kettle project that isn’t this window’s folder: **switch** to a single-project window, use the shared **Kettle** multi-root workspace, or **ask**. The multi-root workspace can get heavy with many large repos — change this anytime here."
         }
@@ -451,12 +479,12 @@
         "id": "kettle.chat",
         "name": "kettle",
         "fullName": "Kettle",
-        "description": "Curatorial queue sitting — approve bookmarks rulings; sweep commits.",
+        "description": "Review a batch of files — Approve marks a decision; Finish batch applies them.",
         "isSticky": true,
         "commands": [
           {
             "name": "queue",
-            "description": "List the curator queue for the current project"
+            "description": "List the queue for the current project"
           },
           {
             "name": "status",
@@ -548,7 +576,7 @@
         "name": "kettle_approve",
         "toolReferenceName": "kettle_approve",
         "displayName": "Kettle Approve",
-        "modelDescription": "Bookmark a user approval on a queue entry. Does NOT apply diffs or commit. Sweep is separate.",
+        "modelDescription": "Mark the user's approval on a queue file. Does NOT apply diffs or commit. Finish batch (kettle_sweep) is separate.",
         "canBeReferencedInPrompt": true,
         "icon": "$(check)",
         "tags": [
@@ -570,8 +598,8 @@
       {
         "name": "kettle_sweep",
         "toolReferenceName": "kettle_sweep",
-        "displayName": "Kettle Sweep",
-        "modelDescription": "Run the Kettle sweep (commit pass) for the current project. Destructive to the sitting; confirm with the user before calling. Distinct from approve.",
+        "displayName": "Kettle Finish Batch",
+        "modelDescription": "Finish the batch for the current project (core's sweep): applies the user's decisions, saves a record, lines up the next files. Ends the batch; confirm with the user before calling. Distinct from approve.",
         "canBeReferencedInPrompt": true,
         "icon": "$(play)",
         "tags": [

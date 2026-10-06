@@ -133,3 +133,43 @@ describe("canonical ritual API routes", () => {
     );
   });
 });
+
+describe("POST /api/set-aside (Not this)", () => {
+  it("sets a file aside with {project, id}, and brings it back with undo", async () => {
+    const calls: { method: string; path: string; body: Record<string, unknown> }[] = [];
+    globalThis.fetch = async (input, init) => {
+      const body = JSON.parse(String(init?.body || "{}")) as Record<string, unknown>;
+      calls.push({ method: String(init?.method), path: new URL(String(input)).pathname, body });
+      return new Response(
+        JSON.stringify({ ok: true, status: body.undo ? "pending" : "set-aside" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    };
+    const api = new KettleApi("http://127.0.0.1:4242");
+
+    const aside = await api.setAside("alpha", "e1");
+    const back = await api.setAside("alpha", "e1", { undo: true });
+
+    assert.deepEqual(calls, [
+      { method: "POST", path: "/api/set-aside", body: { project: "alpha", id: "e1" } },
+      { method: "POST", path: "/api/set-aside", body: { project: "alpha", id: "e1", undo: true } },
+    ]);
+    assert.equal(aside.status, "set-aside");
+    assert.equal(back.status, "pending");
+  });
+
+  it("surfaces core's refusal of the proposal as its own message", async () => {
+    const refusal = "The proposal can't be set aside — edit it, or ask the agent to rewrite it.";
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ error: refusal }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    await assert.rejects(
+      () => new KettleApi("http://127.0.0.1:4242").setAside("alpha", "desk-proposal"),
+      (error: unknown) =>
+        error instanceof KettleApiError && error.status === 400 && error.message === refusal,
+    );
+  });
+});

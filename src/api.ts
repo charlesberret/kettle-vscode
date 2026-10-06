@@ -104,6 +104,26 @@ export type Ping = {
   curator?: PingCurator;
 };
 
+/**
+ * `GET /api/interview` — the founding beacon.
+ *
+ * `founded` is the core's own predicate: a charter (`PROJECT.md`) on disk AND at
+ * least one content queue entry. Prefer it over `has_entries`, which says only
+ * that entries exist — a found run can file entries and still fail to write the
+ * charter, and that desk is still founding. See kettle-core
+ * `docs/SITTING-FLOWS.md` §3.
+ */
+export type InterviewStatus = {
+  status: string;
+  founded?: boolean;
+  has_charter?: boolean;
+  has_session?: boolean;
+  has_entries?: boolean;
+  entry_count?: number;
+  has_proposal?: boolean;
+  proposal_path?: string;
+};
+
 /** One line from an application/x-ndjson curator stream. */
 export type StreamEvent = {
   t: string;
@@ -313,6 +333,21 @@ export class KettleApi {
     });
   }
 
+  /**
+   * "Not this": set one file aside, or with `undo` bring it back to pending.
+   * One call, no explanation asked. Core refuses the proposal entry with 400;
+   * its error message is written for the user and is shown as-is.
+   */
+  setAside(
+    projectId: string,
+    entryId: string | number,
+    opts?: { undo?: boolean },
+  ): Promise<{ ok: boolean; status?: string }> {
+    const body: Record<string, unknown> = { project: projectId, id: entryId };
+    if (opts?.undo) body.undo = true;
+    return this.request("POST", "/api/set-aside", { body });
+  }
+
   /** User/agent feedback on an entry — send-back note, not approve. Empty text clears. */
   comment(
     projectId: string,
@@ -324,7 +359,7 @@ export class KettleApi {
     });
   }
 
-  /** Commit pass for the sitting — NDJSON stream, distinct from approve. */
+  /** Finish batch (core's sweep) — NDJSON stream, distinct from approve. */
   sweep(
     projectId: string,
     opts?: {
@@ -426,14 +461,7 @@ export class KettleApi {
   interviewStatus(
     projectId: string,
     opts?: { mutate?: boolean },
-  ): Promise<{
-    status: string;
-    has_session?: boolean;
-    has_entries?: boolean;
-    entry_count?: number;
-    has_proposal?: boolean;
-    proposal_path?: string;
-  }> {
+  ): Promise<InterviewStatus> {
     const query: Record<string, string | undefined> = { project: projectId };
     if (opts?.mutate === false) query.mutate = "0";
     return this.request("GET", "/api/interview", { query });

@@ -1,10 +1,11 @@
 /**
- * @kettle chat participant — queue-aware helper that shares desk vocabulary
- * with the right-panel tools (approve ≠ apply; sweep = commit).
+ * @kettle chat participant — queue-aware helper that speaks the panel's words
+ * (Approve marks a decision; Finish batch applies them).
  */
 import * as vscode from "vscode";
 import type { KettleApi } from "../api";
 import * as state from "../state";
+import { uiCopy } from "../uiCopy";
 
 export type ParticipantDeps = {
   getApi: () => Promise<KettleApi>;
@@ -19,7 +20,8 @@ export function registerKettleParticipant(
     "kettle.chat",
     async (request, _chatCtx, stream, _token) => {
       stream.markdown(
-        "Kettle sitting helper. **Approve** bookmarks a ruling; **sweep** is the commit pass. " +
+        `Kettle helper. **${uiCopy("approveLabel")}** marks your decision on a file; ` +
+          `**${uiCopy("sweepLabel")}** applies your decisions and lines up the next files. ` +
           "Use tools `kettle_queue`, `kettle_entry`, `kettle_comment`, `kettle_approve`, `kettle_sweep`.\n\n",
       );
 
@@ -56,7 +58,7 @@ export function registerKettleParticipant(
           const last = state.getLastEntry();
           if (last) {
             stream.markdown(
-              `\n\nCurrent desk entry: \`${last.path}\` (${last.status || "pending"}).`,
+              `\n\nOpen file: \`${last.path}\` (${last.status || "pending"}).`,
             );
           }
         } catch (e) {
@@ -67,18 +69,18 @@ export function registerKettleParticipant(
         return;
       }
 
-      if (q.includes("brief") || q.includes("entry")) {
+      if (q.includes("summary") || q.includes("brief") || q.includes("file") || q.includes("entry")) {
         const last = state.getLastEntry();
         if (!last) {
           stream.markdown(
-            "No current entry. Open a queue file or ask for the **queue** first.",
+            "No file open. Open a queue file or ask for the **queue** first.",
           );
           return;
         }
         stream.markdown(`### ${last.path}\n\n`);
-        if (last.ask) stream.markdown(`**Ask:** ${last.ask}\n\n`);
+        if (last.ask) stream.markdown(`**Question:** ${last.ask}\n\n`);
         if (last.brief) stream.markdown(last.brief);
-        else stream.markdown("_No brief prepared._");
+        else stream.markdown("_No summary yet._");
         if (last.comment) stream.markdown(`\n\n**Comment:** ${last.comment}`);
         if (last.diff && (last.diff.added || last.diff.removed)) {
           stream.markdown(`\n\nDiff vs snapshot: +${last.diff.added} −${last.diff.removed}`);
@@ -87,7 +89,7 @@ export function registerKettleParticipant(
       }
 
       stream.markdown(
-        "Try: *queue*, *status*, *brief*, or invoke tools " +
+        "Try: *queue*, *status*, *summary*, or invoke tools " +
           "`kettle_queue` / `kettle_entry` / `kettle_comment` / `kettle_approve` / `kettle_sweep`.",
       );
     },

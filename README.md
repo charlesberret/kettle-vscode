@@ -1,13 +1,32 @@
 # Kettle for VS Code and Cursor
 
-[Kettle](https://github.com/charlesberret/kettle) is a local-first review desk
-for work produced with coding and writing agents. This extension puts the
-curated queue, Desk panel, approvals, comments, and sweeps inside VS Code and
-Cursor.
+[Kettle](https://github.com/charlesberret/kettle) is a local-first way to
+review work produced with coding and writing agents. This extension puts
+Kettle's queue of files and its panel inside VS Code and Cursor.
+
+## How it works
+
+Kettle lines up a batch of files from your project for you to review. Open one
+from the **Kettle** list in Explorer (or the Kettle panel) to read it with the
+agent's summary, edit it, and decide:
+
+- **Approve** — mark your decision on this file. Nothing changes until you
+  finish the batch.
+- **Comment** — leave a note on this file for the agent to act on.
+- **Not this** — set the file aside. The agent takes it as a sign of what you
+  don't want and tells you what it learned. **Bring back** puts it back.
+- **Finish batch** — the agent applies your decisions, reviews what changed,
+  saves a record of this round, and lines up the next files.
+
+A new project starts with a short conversation with the agent, which then
+writes a proposal for you to edit and approve; approving it sets the project
+up and lines up the first batch.
 
 The extension is an adapter. It talks to
 [`kettle-core`](https://github.com/charlesberret/kettle-core), which owns the
-project registry, on-disk Desk, HTTP contract, CLI, and reference web UI.
+project registry, the project files under `.kettle/`, the HTTP contract, the
+CLI, and the reference web UI. The words on screen come from core's catalog,
+so every Kettle window says the same thing.
 
 ## Status
 
@@ -15,8 +34,8 @@ project registry, on-disk Desk, HTTP contract, CLI, and reference web UI.
 packaged as a VSIX. It is not yet published to the Visual Studio Marketplace.
 
 During the rename from Setsweep, Kettle prefers the new `kettle` command,
-`.kettle/` Desk, and Kettle registry. Existing `setsweep` processes,
-`.setsweep/` Desks, and legacy installs remain readable so a working setup is
+`.kettle/` folder, and Kettle registry. Existing `setsweep` processes,
+`.setsweep/` folders, and legacy installs remain readable so a working setup is
 not split or stranded.
 
 ## Prerequisites
@@ -79,19 +98,31 @@ npm run compile
 
 Press `F5` to launch an Extension Development Host. The tests exercise path
 matching, core discovery, compatibility checks, confirmation cards, activity
-state, and the shared Desk ritual rules:
+state, and the shared ritual rules (Approve, Comment, Not this, Finish batch):
 
 ```sh
 npm test
 ```
 
-Core owns the canonical visible copy used by every viewport. Refresh the
-generated TypeScript snapshot after changing `kettle-core/static/ui-copy.js`:
+Core owns the canonical visible copy used by every viewport — labels, hints and
+the per-state status lines. Refresh the generated TypeScript snapshot after
+`kettle-core/kettle/static/ui-copy.json` changes:
 
 ```sh
 KETTLE_SRC=../kettle-core npm run sync-ui-copy
 npm run check-ui-copy
 ```
+
+To sync from a core branch without checking it out, export the file and point
+`KETTLE_UI_COPY` at it:
+
+```sh
+git -C ../kettle-core show origin/main:kettle/static/ui-copy.json > /tmp/ui-copy.json
+KETTLE_UI_COPY=/tmp/ui-copy.json npm run sync-ui-copy
+```
+
+Extension-owned text (notifications, command titles, settings descriptions)
+uses the same plain words: project, file, summary, decision, Finish batch.
 
 See [`DESK.md`](./docs/DESK.md) for the viewport boundary and
 [`DEBUG.md`](./docs/DEBUG.md) for live-host diagnostics.
