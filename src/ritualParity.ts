@@ -1,15 +1,35 @@
 import * as path from "node:path";
 import type { QueueEntry } from "./api";
 import { entryAbsolutePath } from "./project";
-import type { FoundingPhase } from "./state";
+import type { DeskActivity, FoundingPhase } from "./state";
+import { uiCopy, uiState, type UiStateName } from "./uiCopy";
 
+/**
+ * The four ritual controls — Approve, Comment, Not this, Finish batch — with
+ * enablement and every on-screen word, all from core's catalog. The webview
+ * renders this; it does not compute a label of its own.
+ */
 export type RitualControls = {
   interviewing: boolean;
   proposing: boolean;
   canApprove: boolean;
   canComment: boolean;
+  canNotThis: boolean;
   canSweep: boolean;
-  approveLabel: "Approve" | "Found Desk";
+  /** Same word in every phase: "Found Desk" was retired by core on 2026-10-01. */
+  approveLabel: string;
+  approveHint: string;
+  commentLabel: string;
+  commentHint: string;
+  /** True when the open file is already set aside: the control reads Bring back. */
+  notThisUndo: boolean;
+  notThisLabel: string;
+  notThisHint: string;
+  sweepLabel: string;
+  /** The catalog's short form, for a panel too narrow for the full label. */
+  sweepLabelShort: string;
+  sweepHint: string;
+  sweepUndoLabel: string;
 };
 
 /**
@@ -54,7 +74,7 @@ export function isProposalEntry(entry: QueueEntry | undefined): boolean {
 }
 
 /**
- * Resolve the one proposal queue entry that Found desk is allowed to approve.
+ * Resolve the one proposal queue entry that approving the proposal may act on.
  * During proposing, a stale ordinary selection must never be approved by mistake.
  */
 export function proposalEntryForFounding(
@@ -97,10 +117,15 @@ export function ritualControls(input: {
   hasEntry: boolean;
   approved: boolean;
   streaming: boolean;
+  /** The open file's status is `set-aside`. */
+  setAside?: boolean;
+  /** The open file is the proposal (core refuses Not this on it). */
+  isProposal?: boolean;
 }): RitualControls {
   const interviewing = input.phase === "interviewing";
   const proposing = input.phase === "proposing";
   const canFileAct = input.hasEntry && !interviewing && !input.streaming;
+  const notThisUndo = !!input.setAside;
   return {
     interviewing,
     proposing,
@@ -108,8 +133,64 @@ export function ritualControls(input: {
       ? input.hasEntry && !input.streaming
       : canFileAct && !input.approved,
     canComment: canFileAct && !proposing,
+    canNotThis: canFileAct && !proposing && !input.isProposal,
     canSweep:
       input.hasProject && !interviewing && !proposing && !input.streaming,
-    approveLabel: proposing ? "Found Desk" : "Approve",
+    approveLabel: uiCopy("approveLabel"),
+    approveHint: uiCopy(proposing ? "approveHintFounding" : "approveHint"),
+    commentLabel: uiCopy("commentLabel"),
+    commentHint: uiCopy("commentHint"),
+    notThisUndo,
+    notThisLabel: uiCopy(notThisUndo ? "notThisUndoLabel" : "notThisLabel"),
+    notThisHint: uiCopy(notThisUndo ? "notThisUndoHint" : "notThisHint"),
+    sweepLabel: uiCopy("sweepLabel"),
+    sweepLabelShort: uiCopy("sweepLabel", { short: true }),
+    sweepHint: uiCopy("sweepHint"),
+    sweepUndoLabel: uiCopy("sweepUndoLabel"),
   };
 }
+
+/**
+ * The catalog state that describes the desk (kettle-core docs/SITTING-FLOWS.md §7),
+ * or undefined when there is nothing to say beyond the project's name. A running
+ * stream outranks the phase it runs in; a broken desk outranks everything.
+ */
+export function deskStateName(input: {
+  connected: boolean;
+  hasProject: boolean;
+  phase: FoundingPhase;
+  activity: DeskActivity;
+  hasEntry?: boolean;
+}): UiStateName | undefined {
+  if (!input.connected || !input.hasProject) return undefined;
+  if (input.activity === "broken") return "broken";
+  if (input.activity === "sweeping") return "sweeping";
+  if (input.activity === "founding") return "founding";
+  if (input.phase === "interviewing") return "interviewing";
+  if (input.phase === "proposing") return "proposing";
+  if (input.phase === "founded" && !input.hasEntry) return "attached";
+  return undefined;
+}
+
+/**
+ * The status bar text. A state the catalog covers is rendered in its `line`
+ * register; otherwise the project's name. Never a sentence of our own for a state.
+ */
+export function deskStatusLine(input: {
+  connected: boolean;
+  hasProject: boolean;
+  projectName?: string;
+  phase: FoundingPhase;
+  activity: DeskActivity;
+  hasEntry?: boolean;
+}): string {
+  if (!input.connected) return OFFLINE_LINE;
+  if (!input.hasProject) return NO_PROJECT_LINE;
+  const name = deskStateName(input);
+  if (name && name !== "attached") return uiState(name, "line");
+  return input.projectName || "";
+}
+
+/** Not catalog states: the viewport has no core to read a state from. */
+export const OFFLINE_LINE = "Offline — start Kettle with kettle --web";
+export const NO_PROJECT_LINE = "No project selected";

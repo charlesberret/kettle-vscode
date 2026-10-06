@@ -7,6 +7,10 @@ import {
   sortQueueForDisplay,
   nextPendingEntry,
   isApprovedEntry,
+  isHandledEntry,
+  isSetAsideEntry,
+  allHandled,
+  HANDLED_STATUSES,
   nameFromRootPath,
   findProjectByRoot,
 } from "../project";
@@ -208,5 +212,52 @@ describe("sortQueueForDisplay / nextPendingEntry", () => {
       { id: "3", path: "c.md", status: "pending" },
     ];
     assert.equal(nextPendingEntry(afterRefresh, "1")?.id, "3");
+  });
+});
+
+describe("handled set: approved | rework | set-aside", () => {
+  // kettle-core docs/SITTING-FLOWS.md §2.3a and the reference sitting's isHandled.
+  const queue = [
+    { id: "a", path: "a.md", status: "set-aside" },
+    { id: "b", path: "b.md", status: "pending" },
+    { id: "c", path: "c.md", status: "rework" },
+    { id: "d", path: "d.md", status: "approved" },
+    { id: "e", path: "e.md", status: "pending" },
+  ];
+
+  it("names exactly the three handled statuses", () => {
+    assert.deepEqual([...HANDLED_STATUSES].sort(), ["approved", "rework", "set-aside"]);
+    assert.equal(isHandledEntry({ id: "x", path: "x", status: "pending" }), false);
+    assert.equal(isHandledEntry({ id: "x", path: "x" }), false);
+    assert.equal(isHandledEntry({ id: "x", path: "x", status: "set-aside" }), true);
+    assert.equal(isHandledEntry({ id: "x", path: "x", status: "rework" }), true);
+    // Core may mark approval with a timestamp only.
+    assert.equal(isHandledEntry({ id: "x", path: "x", approved: "2026-10-06" }), true);
+  });
+
+  it("recognizes a set-aside file, and only that status", () => {
+    assert.equal(isSetAsideEntry({ id: "x", path: "x", status: "set-aside" }), true);
+    assert.equal(isSetAsideEntry({ id: "x", path: "x", status: "approved" }), false);
+  });
+
+  it("sinks every handled file below the files still waiting", () => {
+    assert.deepEqual(
+      sortQueueForDisplay(queue).map((e) => e.id),
+      ["b", "e", "a", "c", "d"],
+    );
+  });
+
+  it("skips set-aside files when choosing the next file", () => {
+    assert.equal(nextPendingEntry(queue, "b")?.id, "e");
+    assert.equal(nextPendingEntry(queue, "a")?.id, "b");
+  });
+
+  it("calls the batch complete only when every file is handled", () => {
+    assert.equal(allHandled(queue), false);
+    assert.equal(
+      allHandled(queue.map((e) => ({ ...e, status: e.status === "pending" ? "set-aside" : e.status }))),
+      true,
+    );
+    assert.equal(allHandled([]), false);
   });
 });

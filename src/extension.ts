@@ -27,7 +27,10 @@ import {
 } from "./paths";
 import {
   findProjectByRoot,
+  allHandled,
   isApprovedEntry,
+  isHandledEntry,
+  isSetAsideEntry,
   nameFromRootPath,
   nextPendingEntry,
   resolveProjectId as matchProjectId,
@@ -36,6 +39,7 @@ import {
 } from "./project";
 import { registerQueueView, type QueueTreeProvider } from "./queueView";
 import {
+  deskStateName,
   foundingPhaseFrom,
   isProposalEntry,
   proposalDocumentPath,
@@ -54,13 +58,38 @@ import {
   type SidecarState,
 } from "./sidecar";
 import * as state from "./state";
-import { UI_COPY } from "./uiCopy";
+import { UI_COPY, uiCopy, uiState } from "./uiCopy";
 
 let cached: { baseUrl: string; api: KettleApi } | null = null;
 let deskPanel: DeskPanelProvider | undefined;
 let queueView: QueueTreeProvider | undefined;
 let statusItem: vscode.StatusBarItem | undefined;
+/** Connection part of the status bar ("Kettle :4242"); the state line follows it. */
+let statusBase = "$(circle-outline) Kettle";
 let sidecar: SidecarState | undefined;
+
+function setStatusBase(text: string): void {
+  statusBase = text;
+  renderStatusItem();
+}
+
+/**
+ * Status bar: the connection, then the project's state in the catalog's `line`
+ * register while it is in one worth saying (setting up, finishing, broken).
+ */
+function renderStatusItem(): void {
+  if (!statusItem) return;
+  const st = state.getState();
+  const name = deskStateName({
+    connected: st.connected,
+    hasProject: !!st.projectId,
+    phase: st.foundingPhase,
+    activity: state.getDeskActivity(),
+    hasEntry: !!st.lastEntry,
+  });
+  const line = name && name !== "attached" ? uiState(name, "line") : "";
+  statusItem.text = line ? `${statusBase} · ${line}` : statusBase;
+}
 
 // Settings, with one-release fallback reads of the pre-0.3 keys (baseUrl, projectId).
 function cfgServerUrl(): string {
@@ -149,7 +178,7 @@ async function pushCuratorSettingsToCore(): Promise<void> {
       `pushCuratorSettingsToCore failed: ${e instanceof Error ? e.message : e}`,
     );
     void vscode.window.showErrorMessage(
-      formatErr("Could not apply curator settings to Kettle core", e),
+      formatErr("Could not apply agent settings to Kettle core", e),
     );
   }
 }
@@ -225,27 +254,26 @@ async function confirmApprove(
   if (!cfgConfirmApprove()) return true;
 
   const label = entryBasename(entryPath);
+  const approve = uiCopy("approveLabel");
   if (opts?.foundingProposal) {
     const choice = await vscode.window.showInformationMessage(
-      "Found the desk from this proposal?",
+      `${uiCopy("approveHintFounding")}?`,
       {
         modal: true,
-        detail:
-          "Kettle will use your edited DESK-PROPOSAL.md as the charter, write the desk files, and stock the first queue batch. You can amend the desk later.",
+        detail: uiState("founding", "full"),
       },
-      "Found Desk",
+      approve,
     );
-    return choice === "Found Desk";
+    return choice === approve;
   }
 
   const choice = await vscode.window.showInformationMessage(
-    `Approve this version of ${label}?`,
+    `${approve} this version of ${label}?`,
     {
       modal: true,
-      detail:
-        'This will mark the file as approved in the Kettle queue. You must click the "sweep" button for the agent to commit and process this batch of files.',
+      detail: uiCopy("approveHint"),
     },
-    "Approve",
+    approve,
     "Don't ask again",
   );
   if (choice === "Don't ask again") {
@@ -254,7 +282,7 @@ async function confirmApprove(
       .update("confirmApprove", false, vscode.ConfigurationTarget.Global);
     return true;
   }
-  return choice === "Approve";
+  return choice === approve;
 }
 
 /** Focus Kettle Desk on activate (default true — brings sitting over Agent on Cursor). */
@@ -330,7 +358,7 @@ async function api(): Promise<KettleApi> {
 function invalidateApi(): void {
   cached = null;
   state.setConnected(false, "Kettle · disconnected");
-  statusItem && (statusItem.text = "$(debug-disconnect) Kettle");
+  setStatusBase("$(debug-disconnect) Kettle");
 }
 
 async function touchConnection(): Promise<boolean> {
@@ -339,7 +367,7 @@ async function touchConnection(): Promise<boolean> {
     const p = await a.ping();
     state.setConnected(true, `Kettle · :${p.port}`);
     if (statusItem) {
-      statusItem.text = `$(check) Kettle :${p.port}`;
+      setStatusBase(`$(check) Kettle :${p.port}`);
       statusItem.tooltip = `Core pid ${p.pid} · ${cached?.baseUrl}`;
     }
     // Drop legacy "glance" model role from core settings (removed product surface).
@@ -488,9 +516,9 @@ async function resolveProjectId(forcePick = false): Promise<string | undefined> 
         };
       }),
       {
-        label: "$(add) Register new project…",
+        label: "$(add) Add project…",
         description: "browse for a folder",
-        detail: "Pick any folder under your home — seeds .kettle or adopts an existing desk",
+        detail: "Pick any folder under your home — Kettle starts setting it up, or picks up an existing .kettle folder",
         project: undefined,
         isAdd: true,
       },
@@ -524,8 +552,8 @@ async function registerNewProject(): Promise<string | undefined> {
     canSelectFiles: false,
     canSelectFolders: true,
     canSelectMany: false,
-    openLabel: "Register as Kettle project",
-    title: "Choose a folder to register as a Kettle desk",
+    openLabel: "Add as Kettle project",
+    title: "Choose a folder to add as a Kettle project",
     defaultUri,
   });
   const root = uris?.[0]?.fsPath;
@@ -1419,7 +1447,7 @@ async function bindProject(
           {
             label: FLEET_LABEL,
             detail:
-              "Multi-root explorer keeps your registered Kettle desks together " +
+              "Multi-root explorer keeps your Kettle projects together " +
               "(can get heavy with several large repos; sometimes confuses git).",
           },
         ],
@@ -1552,7 +1580,7 @@ async function ensureKettleWorkspaceLayout(): Promise<void> {
         await extContext.globalState.update(tipKey, true);
         const pick = await vscode.window.showInformationMessage(
           "Kettle tip: sole projects open as the project folder (trust that folder). " +
-            "Shared multi-desk mode uses ~/.kettle/Kettle.code-workspace — " +
+            "The shared multi-project workspace uses ~/.kettle/Kettle.code-workspace — " +
             "add ~/.kettle once under Workspaces: Manage Workspace Trust " +
             "(do not turn Workspace Trust off).",
           "Manage Workspace Trust",
@@ -1584,7 +1612,7 @@ async function ensureKettleWorkspaceLayout(): Promise<void> {
       void vscode.window
         .showWarningMessage(
           "This Kettle window is in Restricted Mode. " +
-            "Trust ~/.kettle (shared multi-desk layouts) and your project folders " +
+            "Trust ~/.kettle (the shared multi-project workspace) and your project folders " +
             "under Workspaces: Manage Workspace Trust — keep Workspace Trust enabled.",
           "Manage Workspace Trust",
         )
@@ -1656,12 +1684,20 @@ async function refreshQueue(): Promise<void> {
   if (!projectId) return;
   try {
     const q = await (await api()).queue(projectId, { mutate: false });
+    if (state.getDeskActivity() === "broken") state.setDeskActivity("idle");
     state.setEntries(q.entries || []);
     await refreshFoundingPhase(projectId);
     deskPanel?.refresh();
     queueView?.refresh();
     updateEditorContext();
   } catch (e) {
+    // 409 queue_corrupt / 404 moved folder are about this project, not the
+    // connection (SITTING-FLOWS §0): mark it broken, keep the core attached.
+    if (e instanceof KettleApiError && (e.status === 409 || e.status === 404)) {
+      state.setDeskActivity("broken");
+      void vscode.window.showErrorMessage(`${uiState("broken", "short")} (${e.message})`);
+      return;
+    }
     invalidateApi();
     void vscode.window.showErrorMessage(formatErr("Could not load queue", e));
   }
@@ -1756,7 +1792,7 @@ async function beginFounding(): Promise<void> {
     debug.logDesk("interview.error", e instanceof Error ? e.message : String(e));
     deskPanel?.endFoundingFreeze();
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Founding interview failed", e));
+    void vscode.window.showErrorMessage(formatErr("Setup questions failed", e));
   }
 }
 
@@ -1788,7 +1824,7 @@ async function pickEntry(
       detail: e.ask || e.brief?.slice(0, 120),
       entry: e,
     })),
-    { placeHolder: "Queue entry" },
+    { placeHolder: "File in the queue" },
   );
   return pick?.entry;
 }
@@ -1992,7 +2028,7 @@ async function waitForProposalFile(
 async function openDraftedProposal(projectId: string): Promise<void> {
   const root = (await ensureProjectRoot(projectId)) || state.getProjectRoot();
   if (!root) {
-    void vscode.window.showErrorMessage("Could not open Desk Proposal: no project root.");
+    void vscode.window.showErrorMessage("Could not open the proposal: no project folder.");
     return;
   }
 
@@ -2014,7 +2050,7 @@ async function openDraftedProposal(projectId: string): Promise<void> {
 
   const ready = await waitForProposalFile(abs);
   if (!ready) {
-    const msg = `Desk Proposal not found yet at ${abs}`;
+    const msg = `The proposal is not written yet at ${abs}`;
     debug.log(msg);
     void vscode.window.showWarningMessage(
       `${msg}. It may still be writing — try opening .kettle/DESK-PROPOSAL.md from Explorer.`,
@@ -2070,21 +2106,33 @@ async function openDraftedProposal(projectId: string): Promise<void> {
       bytes: (await fs.stat(abs)).size,
     });
   } catch (e) {
-    const msg = formatErr(`Could not open Desk Proposal at ${abs}`, e);
+    const msg = formatErr(`Could not open the proposal at ${abs}`, e);
     debug.log(msg);
     void vscode.window.showErrorMessage(msg);
   }
 }
 
-/** Modal gate before a sweep, honoring kettle.confirmSweep. True = proceed. */
+/** Modal gate before Finish batch (core's sweep), honoring kettle.confirmSweep. True = proceed. */
 async function confirmSweep(projectId: string): Promise<boolean> {
   if (!cfgConfirmSweep()) return true;
+  const go = uiCopy("sweepLabel");
   const ok = await vscode.window.showWarningMessage(
-    `Sweep project “${projectId}”? This is the commit pass (diff → assess → ripple → learn), not approve.`,
-    { modal: true },
-    "Sweep",
+    uiCopy("sweepConfirmTitle"),
+    { modal: true, detail: `${uiCopy("sweepConfirmBody")}\n\nProject: ${projectId}` },
+    go,
   );
-  return ok === "Sweep";
+  return ok === go;
+}
+
+/**
+ * Notice when a batch finishes. The event is ours to name; what to do next is the
+ * catalog's `attached` state, so it reads the same as every other viewport.
+ */
+function finishedBatchNotice(projectId: string): string {
+  const next = state.getEntries().some((e) => !isHandledEntry(e))
+    ? ` ${uiState("attached", "short")}`
+    : "";
+  return `Batch finished in ${projectId}.${next}`;
 }
 
 /** Gear → Kettle settings in this editor (no web-UI detour). */
@@ -2104,7 +2152,7 @@ async function saveDirtyProposalDocument(
   const abs = root ? proposalDocumentPath(entry, root) : undefined;
   if (!abs) {
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: could not resolve DESK-PROPOSAL.md.",
+      "Setup stopped: could not find the proposal (DESK-PROPOSAL.md).",
     );
     return false;
   }
@@ -2120,12 +2168,12 @@ async function saveDirtyProposalDocument(
     if (!doc.isDirty) return true;
     if (await doc.save()) return true;
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: DESK-PROPOSAL.md could not be saved.",
+      "Setup stopped: the proposal (DESK-PROPOSAL.md) could not be saved.",
     );
     return false;
   } catch (error) {
     void vscode.window.showErrorMessage(
-      formatErr("Found Desk stopped: could not save DESK-PROPOSAL.md", error),
+      formatErr("Setup stopped: could not save the proposal (DESK-PROPOSAL.md)", error),
     );
     return false;
   }
@@ -2141,7 +2189,7 @@ async function approveEntry(entry: QueueEntry): Promise<void> {
   );
   if (state.isProposing() && !proposal) {
     void vscode.window.showErrorMessage(
-      "Found Desk stopped: the DESK-PROPOSAL.md queue entry is missing.",
+      "Setup stopped: the proposal is missing from the queue.",
     );
     return;
   }
@@ -2168,16 +2216,14 @@ async function approveEntry(entry: QueueEntry): Promise<void> {
         const fresh = state.getEntries().find((e) => String(e.id) === String(approvedId));
         if (fresh) state.setLastEntry(fresh);
         deskPanel?.refresh();
-        void vscode.window.showInformationMessage(
-          "Approved — no more pending entries. Sweep when the sitting is done.",
-        );
+        void vscode.window.showInformationMessage(`Approved. ${allDecidedNotice()}`);
       }
     } else {
       const fresh = state.getEntries().find((e) => String(e.id) === String(approvedId));
       if (fresh) state.setLastEntry(fresh);
       deskPanel?.refresh();
       void vscode.window.showInformationMessage(
-        `Approved (ruling bookmarked; run Sweep when the sitting is done).`,
+        `Approved. Nothing changes until you press ${uiCopy("sweepLabel")}.`,
       );
     }
   } catch (e) {
@@ -2205,18 +2251,60 @@ async function foundFromProposal(projectId: string): Promise<void> {
     }
   } catch (e) {
     invalidateApi();
-    void vscode.window.showErrorMessage(formatErr("Found Desk failed", e));
+    void vscode.window.showErrorMessage(formatErr("Setting up the project failed", e));
     return;
   }
   state.setFoundingPhase("none");
   await refreshQueue();
+  // A stream that ended is not a founded project: announce only on core's
+  // `founded` (SITTING-FLOWS §3.5 step 3); otherwise the proposal stays open.
+  if (state.getFoundingPhase() !== "founded") {
+    void vscode.window.showWarningMessage(uiState("proposing", "short"));
+    return;
+  }
   const first = state
     .getEntries()
-    .find((e) => !isApprovedEntry(e) && !isProposalEntry(e));
+    .find((e) => !isHandledEntry(e) && !isProposalEntry(e));
   if (first) await openEntry(first);
-  void vscode.window.showInformationMessage(
-    "Desk founded — first queue batch is ready.",
-  );
+  void vscode.window.showInformationMessage(uiState("founded", "short"));
+}
+
+/**
+ * Not this / Bring back on one file (POST /api/set-aside). One action, no prompt.
+ * Setting a file aside moves on to the next file still waiting, like Approve.
+ * Core's refusal (the proposal, an unknown file) is shown as it was written.
+ */
+async function setAsideEntry(entry: QueueEntry, undo: boolean): Promise<void> {
+  const projectId = state.getProjectId() || (await resolveProjectId());
+  if (!projectId) return;
+  try {
+    await (await api()).setAside(projectId, entry.id, { undo });
+  } catch (e) {
+    // A 4xx is core answering about this file, not a lost connection.
+    if (!(e instanceof KettleApiError && e.status && e.status < 500)) invalidateApi();
+    void vscode.window.showErrorMessage(e instanceof Error ? e.message : String(e));
+    return;
+  }
+  await refreshQueue();
+  const fresh = state.getEntries().find((e) => String(e.id) === String(entry.id));
+  if (!undo && cfgOpenNextOnApprove()) {
+    const next = nextPendingEntry(state.getEntries(), entry.id);
+    if (next) {
+      await openEntry(next);
+      await queueView?.revealEntry(next);
+      return;
+    }
+  }
+  if (fresh) state.setLastEntry(fresh);
+  deskPanel?.refresh();
+  if (!undo && allHandled(state.getEntries())) {
+    void vscode.window.showInformationMessage(allDecidedNotice());
+  }
+}
+
+/** Every file in the queue is handled (approved, rework, or set aside). */
+function allDecidedNotice(): string {
+  return `Every file has a decision. Press ${uiCopy("sweepLabel")} when you are done.`;
 }
 
 /** Return false without posting /api/compact when core says no session exists. */
@@ -2534,13 +2622,13 @@ async function maybeShowLayoutTip(context: vscode.ExtensionContext): Promise<voi
   if (context.globalState.get(key)) return;
   await context.globalState.update(key, true);
   const pick = await vscode.window.showInformationMessage(
-    "Kettle Desk sits in the Secondary Side Bar (opposite Explorer). " +
+    "The Kettle panel sits in the Secondary Side Bar (opposite Explorer). " +
       "In Cursor that is usually the left column — queue stays with Explorer on the right, " +
       "so you can review without toggling. Use View → Appearance → Secondary Side Bar if it is hidden.",
-    "Show Desk",
+    "Show Kettle",
     "Got it",
   );
-  if (pick === "Show Desk") await revealDeskSurface();
+  if (pick === "Show Kettle") await revealDeskSurface();
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -2555,10 +2643,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   statusItem.command = "kettle.debug";
-  statusItem.text = "$(circle-outline) Kettle";
+  setStatusBase("$(circle-outline) Kettle");
   statusItem.tooltip = `Kettle ${identity.version} · ${identity.buildId} (click: Debug)`;
   statusItem.show();
   context.subscriptions.push(statusItem);
+  const unsubStatus = state.subscribe(() => renderStatusItem());
+  context.subscriptions.push({ dispose: unsubStatus });
   context.subscriptions.push(
     vscode.commands.registerCommand("kettle.debug", () => runKettleDebug()),
     // Aliases — keep old command ids working for keybindings / muscle memory
@@ -2580,11 +2670,13 @@ export function activate(context: vscode.ExtensionContext): void {
   deskPanel = new DeskPanelProvider({
     approve: (e) => approveEntry(e),
     comment: (e, text) => commentEntry(e, text),
+    setAside: (e, undo) => setAsideEntry(e, undo),
+    confirmSweep: () => cfgConfirmSweep(),
     sweep: async (opts) => {
       const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) throw new Error("No project selected");
       if (!(await confirmSweep(projectId))) {
-        const cancel = new Error("Sweep cancelled");
+        const cancel = new Error("Finish batch cancelled");
         cancel.name = "AbortError";
         throw cancel;
       }
@@ -2594,7 +2686,7 @@ export function activate(context: vscode.ExtensionContext): void {
         signal: opts?.signal,
       });
       await refreshQueue();
-      void vscode.window.showInformationMessage(`Sweep finished for ${projectId}.`);
+      void vscode.window.showInformationMessage(finishedBatchNotice(projectId));
     },
     chat: async (message, opts) => {
       const projectId = state.getProjectId() || (await resolveProjectId(true));
@@ -2816,7 +2908,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const ping = await client.ping();
         state.setConnected(true, `Kettle · :${ping.port}`);
         if (statusItem) {
-          statusItem.text = `$(check) Kettle :${ping.port}`;
+          setStatusBase(`$(check) Kettle :${ping.port}`);
           statusItem.tooltip = `Core pid ${ping.pid} · ${cached?.baseUrl}`;
         }
         const reg = ping.projects ? ` · ${ping.projects}` : "";
@@ -2898,10 +2990,32 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
         if (isApprovedEntry(entry)) {
-          void vscode.window.showInformationMessage("That entry is already approved.");
+          void vscode.window.showInformationMessage("That file is already approved.");
           return;
         }
         await approveEntry(entry);
+      },
+    ),
+
+    /**
+     * Not this / Bring back. One command toggles by the file's status; the queue
+     * menu shows it as Not this on a waiting file and Bring back on a set-aside one.
+     */
+    vscode.commands.registerCommand(
+      "kettle.notThis",
+      async (item?: { entry?: QueueEntry; kind?: string }) => {
+        const entry = item?.entry || (await resolveEntryForAction());
+        if (!entry) return;
+        // The proposal is refused by core with a message for the user; show that.
+        await setAsideEntry(entry, isSetAsideEntry(entry));
+      },
+    ),
+    vscode.commands.registerCommand(
+      "kettle.bringBack",
+      async (item?: { entry?: QueueEntry; kind?: string }) => {
+        const entry = item?.entry || (await resolveEntryForAction());
+        if (!entry || !isSetAsideEntry(entry)) return;
+        await setAsideEntry(entry, true);
       },
     ),
 
@@ -2909,9 +3023,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const entry = await resolveEntryForAction();
       if (!entry) return;
       const text = await vscode.window.showInputBox({
-        prompt: `Comment on ${entry.path} (empty clears)`,
+        prompt: `${uiCopy("commentHint")}: ${entry.path} (empty clears)`,
         value: entry.comment || "",
-        placeHolder: "Send-back note for the curator",
+        placeHolder: uiCopy("commentLabel"),
       });
       if (text === undefined) return;
       await commentEntry(entry, text);
@@ -2921,22 +3035,25 @@ export function activate(context: vscode.ExtensionContext): void {
       const projectId = state.getProjectId() || (await resolveProjectId(true));
       if (!projectId) return;
       if (!(await confirmSweep(projectId))) return;
+      state.setDeskActivity("sweeping");
       try {
         await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: `Kettle sweep — ${projectId}`,
+            title: `${uiState("sweeping", "line")} ${projectId}`,
             cancellable: false,
           },
           async () => {
             await (await api()).sweep(projectId);
           },
         );
+        state.setDeskActivity("idle");
         await refreshQueue();
-        void vscode.window.showInformationMessage(`Sweep finished for ${projectId}.`);
+        void vscode.window.showInformationMessage(finishedBatchNotice(projectId));
       } catch (e) {
+        state.setDeskActivity("idle");
         invalidateApi();
-        void vscode.window.showErrorMessage(formatErr("Sweep failed", e));
+        void vscode.window.showErrorMessage(formatErr("Finish batch failed", e));
       }
     }),
 
@@ -2947,7 +3064,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: `Refreshing briefs — ${projectId}`,
+            title: `Refreshing summaries — ${projectId}`,
             cancellable: false,
           },
           async () => {
@@ -2956,7 +3073,7 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         await refreshQueue();
         void vscode.window.showInformationMessage(
-          `Briefs refreshed for ${projectId} (cold re-entry standard).`,
+          `Summaries refreshed for ${projectId}.`,
         );
       } catch (e) {
         invalidateApi();
@@ -2968,9 +3085,9 @@ export function activate(context: vscode.ExtensionContext): void {
           (e instanceof KettleApiError && e.status === 404);
         void vscode.window.showErrorMessage(
           staleCore
-            ? `Refresh briefs failed: core does not expose /api/refresh-briefs (${msg}). ` +
+            ? `Refreshing summaries failed: core does not expose /api/refresh-briefs (${msg}). ` +
                 "Run Kettle: Restart Core (or restart `kettle --web`) so the live process loads the current server.py, then try again."
-            : formatErr("Refresh briefs failed", e),
+            : formatErr("Refreshing summaries failed", e),
         );
       }
     }),
@@ -3209,22 +3326,22 @@ export function activate(context: vscode.ExtensionContext): void {
     // Skip prompt when we already resumed a workspace switch above.
     if (!resumedWorkspaceSwitch && id && state.getFoundingPhase() === "none") {
       const pick = await vscode.window.showInformationMessage(
-        `Kettle project “${id}” is not founded yet. Begin the interview in the Desk panel?`,
-        "Begin interview",
+        `Kettle project “${id}” is not set up yet. Start setting it up in the Kettle panel?`,
+        "Set up",
         "Later",
       );
-      if (pick === "Begin interview") await beginFounding();
+      if (pick === "Set up") await beginFounding();
     } else if (
       !resumedWorkspaceSwitch &&
       id &&
       state.getFoundingPhase() === "interviewing"
     ) {
       const pick = await vscode.window.showInformationMessage(
-        `Founding interview in progress for “${id}”. Resume in the Desk panel?`,
-        "Show Desk",
+        `“${id}” is still being set up. Continue in the Kettle panel?`,
+        "Show Kettle",
         "Later",
       );
-      if (pick === "Show Desk") {
+      if (pick === "Show Kettle") {
         await vscode.commands.executeCommand("kettle.deskPanel.focus");
       }
     }

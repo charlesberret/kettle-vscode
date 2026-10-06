@@ -7,100 +7,110 @@
  * keys, so a string changed in core reaches this one too.
  */
 export const UI_COPY = {
-  /** Agent pane status when no curator stream is running. */
+  /** Agent pane status when no agent stream is running. */
   streamIdle: "Chat stream idle",
-  /** Spinner label while a curator turn is in flight. */
-  spinWorking: "working…",
+  /** Spinner label while an agent turn is in flight. */
+  spinWorking: "Working…",
   /** Chat input placeholder on a founded desk. */
   chatPlaceholder: "Chat with the Kettle agent…",
   /** Chat input placeholder during the founding interview (P3). */
-  chatPlaceholderFounding: "Chat with the Kettle agent…",
+  chatPlaceholderFounding: "Chat with the Kettle agent (recommended)",
   /** Chat input placeholder while a Desk Proposal is on the editor (P4). */
-  chatPlaceholderProposing: "Ask to revise the proposal — or edit it, then Found Desk",
+  chatPlaceholderProposing: "Ask the agent to revise the proposal",
   /** Editor placeholder on a founded desk with no entry open. Intentionally empty. */
   editorPlaceholder: "",
   /** Editor placeholder during the founding interview; the editor is not the work surface yet. */
-  editorPlaceholderFounding: "Founding Interview — work in the agent pane on the right",
+  editorPlaceholderFounding: "Chat with the agent to establish your project.",
   /** Editor placeholder when the Desk Proposal is the open document. */
-  editorPlaceholderProposing: "Desk Proposal — edit, then use Found Desk",
+  editorPlaceholderProposing: "Edit the proposal, then approve it to set up your project",
   /** Comment box placeholder, including its key bindings. */
-  commentPlaceholder: "a note for the sweep, tied to this file — Enter saves · Shift+Enter newline · Esc cancels",
+  commentPlaceholder: "A note on this file for the agent to read when you finish this batch — Enter saves · Shift+Enter newline · Esc cancels",
   /** Queue empty-state hed during the founding interview. */
-  foundingQueueHintTitle: "Founding",
+  foundingQueueHintTitle: "Setting up",
   /** Queue empty-state body during founding — says where the work is and what fills the queue. */
-  foundingQueueHintBody: "The curator is in the agent pane. Answer there, then Draft Proposal ✓ when ready. The queue fills after you use Found Desk on the proposal.",
-  /** Queue empty-state hed while a proposal awaits Found Desk. */
-  proposingQueueHintTitle: "Desk Proposal",
+  foundingQueueHintBody: "Chat with the Kettle agent to set up your project with a queue of files to review.",
+  /** Queue empty-state hed while a proposal awaits Approve. */
+  proposingQueueHintTitle: "Proposal",
   /** Queue empty-state body while proposing. The short form is what a status bar shows. */
-  proposingQueueHintBody: "Edit the proposal in the editor until it matches your project, needs, and expectations. Chat with the curator to revise or co-write. Press Found Desk only when it feels right — that founds the desk and stocks the first queue.",
-  /** Second line of the Desk brief when a project is bound but no queue entry is selected. */
-  noEntryBriefBody: "The Kettle file panel contains a batch of files for you to review, edit, approve, and sweep when the batch is finished.",
+  proposingQueueHintBody: "Edit the proposal until it matches what you want from this project. Chat with the agent to revise it or write it together. When it looks right, approve it — that sets up your project and lines up the first batch of files to review.",
+  /** Second line of the brief when a project desk is bound and no queue entry is selected. */
+  noEntryBriefBody: "Kettle lines up a batch of files for you to review, edit, and approve. When you are done, press Finish batch: the agent applies your decisions and lines up the next one.",
   /** Hed of the queue pane (left column, top). */
   queueTitle: "Queue",
   /** Hed of the entry-metadata pane (left column, bottom). */
   metaTitle: "Info",
   /** Button in the Info pane hed that switches entry fields to editable. */
-  metaEditLabel: "edit",
+  metaEditLabel: "Edit",
   /** Label beside the project selector in the desk chrome. */
   deskProjectLabel: "Project",
-  /** Ritual button: bookmark a ruling on the open entry. Becomes approveLabelFounding while proposing. */
+  /** Ritual control: rules on the open entry. Reads Approve in both states — while a proposal is open, pressing it founds the project desk. */
   approveLabel: "Approve",
-  /** The same ritual button while a Desk Proposal is open — pressing it founds the desk (P4 → founded). */
-  approveLabelFounding: "Found Desk",
+  /** The same control while proposing. Same word since 2026-10-01; kept as its own key so a viewport may still differ if it needs to. */
+  approveLabelFounding: "Approve",
   /** Tooltip on Approve. States what it does not do, which is the common misread. */
-  approveHint: "Bookmark a ruling — does not apply or commit",
-  /** Tooltip on the ritual button while it reads Found Desk (proposing). */
-  approveHintFounding: "Found this desk from your edited proposal",
+  approveHint: "Mark your decision on this file. Nothing changes until you press Finish batch.",
+  /** Tooltip on the ritual control while a proposal is open. The label does not change (Approve was retired 2026-10-01); the sitting promotes the control visually instead. */
+  approveHintFounding: "Approve the proposal to set up your project",
   /** Ritual button: open the note box for the open file. */
   commentLabel: "Comment",
   /** Tooltip on Comment. */
-  commentHint: "Leave a note on this file for the agent to address during the sweep",
+  commentHint: "Leave a note on this file for the agent to act on",
   /** Hint under the comment box, explaining when the note is consumed. */
-  commentTiedHint: "tied to this file; the sweep reads it when it closes the sitting",
+  commentTiedHint: "This note stays with the file. The agent reads it when you finish the batch.",
   /** Button that commits the comment box. */
-  commentSaveLabel: "save",
-  /** Ritual button: close the sitting. */
-  sweepLabel: "Sweep",
-  /** Tooltip on Sweep — the full list of what closing does. */
-  sweepHint: "close the sitting — apply rulings, diff & assess the batch, fix/flag ripples, log the session, restock the queue",
-  /** Status strip under the project bar while the founding interview runs. */
-  foundingHeadTitle: "founding interview",
-  /** Ends the interview early and drafts the Desk Proposal (P3 → P4). The ✓ is part of the label. */
-  draftProposalLabel: "Draft Proposal ✓",
+  commentSaveLabel: "Save",
+  /** Ritual control: set this file aside. One click, no explanation asked — the agent works out whether you meant this file or this kind of file, and says what it took from it in the next round notes. */
+  notThisLabel: "Not this",
+  /** Tooltip on Not this. */
+  notThisHint: "Set this file aside. The agent takes it as a sign of what you don't want, and tells you what it learned when you finish the batch.",
+  /** The same control on a file already set aside. */
+  notThisUndoLabel: "Bring back",
+  /** Tooltip on Bring back. */
+  notThisUndoHint: "Put this file back in the batch",
+  /** The button that ends a batch. Internally this is a sweep; the word stays off screen. */
+  sweepLabel: "Finish batch",
+  /** Tooltip on Finish batch: the full list of what finishing does. */
+  sweepHint: "Apply your decisions, review what changed, note anything else it affects, and line up the next files",
+  /** Finish batch, relabelled during the 3-second window when confirmation is off; pressing it cancels. */
+  sweepUndoLabel: "Undo",
+  /** Status strip under the project bar while the founding interview runs. Title Case as a hed (docs/UI.md); the term is lowercase in prose. */
+  foundingHeadTitle: "Setting up your project",
+  /** Ends the founding interview early and writes the Desk Proposal. */
+  draftProposalLabel: "Auto: let the Kettle agent decide",
   /** Tooltip on Draft Proposal ✓. */
-  draftProposalHint: "skip remaining chat and draft the desk proposal now",
+  draftProposalHint: "Skip the rest of the questions and let the agent write the proposal now",
   /** Leaves founding for later and opens the project as-is. */
-  skipFoundingLabel: "skip for now",
+  skipFoundingLabel: "Skip: open a blank project for now",
   /** Tooltip on skip for now. Names the cost (no charter, no queue) and how to resume. */
-  skipFoundingHint: "leave founding for later — open the project as-is (no charter or queue yet); reselect it to resume founding",
+  skipFoundingHint: "Set this up later — open the project now, with no files lined up",
   /** Hed of the sweep confirmation dialog. */
-  sweepConfirmTitle: "Sweep the Desk?",
+  sweepConfirmTitle: "Finish This Batch?",
   /** Body of the sweep confirmation — the authoritative description of what a sweep does. */
-  sweepConfirmBody: "Closes the sitting: applies ticked rulings (launches become logged directives), diffs and assesses every reviewed entry, fixes or flags ripples, writes the session log, and restocks the queue.",
+  sweepConfirmBody: "Applies the decisions you marked, reviews what changed in each file, notes anything else it affects, saves a record of this round, and lines up the next batch.",
   /** Placeholder for the optional free-text steer on the sweep dialog. */
-  sweepThrustPlaceholder: "a steer for this pass — what's most on your mind as you close the sitting. the agent reads it first (optional · ⌘Enter sweeps)",
+  sweepThrustPlaceholder: "Anything on your mind as you finish? The agent reads this first (optional)",
   /** Hed of the add-project dialog. */
   addProjectTitle: "Add Project",
   /** Body of the add-project dialog — sets up what happens after Start Interview. */
-  addProjectNote: "Name a folder under your home. The interview starts in the agent pane — Draft Proposal ✓ drafts a proposal you edit, then use Found Desk.",
-  /** Button that registers the project and opens founding (P1 to P3). Title Case: docs/UI.md lists it by name among the signature actions that are also titles, beside Found Desk and Draft Proposal. The web markup read 'start interview' until 2026-09-30, so the sitting and the VS Code mirror disagreed. */
+  addProjectNote: "Name the project folder",
+  /** Button that registers the project and opens founding (P1 to P3). Title Case: docs/UI.md lists it among the signature actions that are also titles. */
   addProjectStart: "Start Interview",
   /** Placeholder for the project's display name. */
-  addProjectNamePlaceholder: "name",
+  addProjectNamePlaceholder: "Name",
   /** Placeholder for the project root. */
-  addProjectFolderPlaceholder: "folder (absolute or ~/ path)",
+  addProjectFolderPlaceholder: "Folder path",
   /** The one mission question of registration (P1). Founding is a conversation, not a confirmation card — see docs/REVIEW.md. */
-  addProjectFoundingQuestion: "In a sentence or two: what is this, and what do you want from a second reader here?",
+  addProjectFoundingQuestion: "What's the state of this project and how could a second reader help?",
   /** Example answer to the founding question. An example, not an instruction. */
-  addProjectFoundingPlaceholder: "e.g. a research folder that grows fast — flag anything that looks stale or contradicts what's already written",
+  addProjectFoundingPlaceholder: "Example: \"This project is growing quickly. Start by flagging anything that looks stale or contradictory.\"",
   /** Hed of the re-found dialog. */
-  refoundTitle: "Re-found this project?",
-  /** Hed of the first-run curator setup dialog. */
+  refoundTitle: "Set up this project again?",
+  /** Hed of the first-run agent setup dialog. */
   setupTitle: "Kettle",
   /** Body of first-run setup. The key promise (no stored keys) must survive any rewrite. */
-  setupNote: "Pick the agent CLI that runs founding, chat, and sweeps. Kettle never stores API keys — sign in to the CLI or set its key in your shell.",
+  setupNote: "Pick the agent that runs setup, chat, and reviews. Kettle never stores keys. Sign in with your browser or set the API key in your shell.",
   /** Placeholder status while first-run setup probes the selected CLI. */
-  setupChecking: "checking curator…",
+  setupChecking: "Checking agent…",
 } as const;
 
 /**
@@ -108,32 +118,35 @@ export const UI_COPY = {
  * words — never a different instruction. Absent keys fall back to UI_COPY.
  */
 export const UI_COPY_SHORT: Partial<Record<UiCopyKey, string>> = {
-  streamIdle: "idle",
-  spinWorking: "working",
-  chatPlaceholder: "chat",
-  chatPlaceholderFounding: "answer the curator",
-  chatPlaceholderProposing: "revise, or Found Desk",
-  editorPlaceholderFounding: "founding — work in the agent pane",
-  editorPlaceholderProposing: "edit, then Found Desk",
-  commentPlaceholder: "note for the sweep",
-  foundingQueueHintBody: "Answer the curator in the agent pane, then Draft Proposal ✓.",
-  proposingQueueHintBody: "Edit the proposal until it matches your intent, then Found Desk.",
-  noEntryBriefBody: "A batch of files to review, edit, approve, then sweep.",
-  queueTitle: "Q",
+  streamIdle: "Agent idle",
+  spinWorking: "Working",
+  chatPlaceholder: "Chat",
+  chatPlaceholderFounding: "Chat with the agent",
+  chatPlaceholderProposing: "Revise, then approve",
+  editorPlaceholderProposing: "Edit the proposal, then approve it",
+  commentPlaceholder: "Note for the agent",
+  foundingQueueHintBody: "Chat with the agent to set up your project.",
+  proposingQueueHintBody: "Edit the proposal, then approve it to set up your project.",
+  noEntryBriefBody: "A batch of files to review, edit, and approve.",
   approveLabel: "approve",
-  approveLabelFounding: "found",
-  commentLabel: "comment",
-  commentTiedHint: "the sweep reads this",
-  sweepLabel: "sweep",
-  sweepHint: "close the sitting",
-  foundingHeadTitle: "founding",
-  draftProposalLabel: "draft proposal",
-  sweepConfirmBody: "Applies rulings, assesses the batch, logs the session, restocks the queue.",
-  sweepThrustPlaceholder: "a steer for this pass (optional)",
-  addProjectNote: "Name a folder; the interview starts in the agent pane.",
-  addProjectStart: "start",
-  addProjectFoundingQuestion: "What is this, and what do you want from a second reader?",
-  setupNote: "Pick the agent CLI. Kettle never stores API keys.",
+  approveHint: "Mark your decision on this file.",
+  approveHintFounding: "Edit and approve the proposal",
+  commentHint: "Leave a note for the agent",
+  commentTiedHint: "The agent reads this when you finish the batch",
+  notThisHint: "Set this file aside",
+  sweepLabel: "Finish",
+  sweepHint: "Apply your decisions and line up the next files",
+  draftProposalLabel: "Auto-mode",
+  draftProposalHint: "Skip the interview",
+  skipFoundingLabel: "Skip interview",
+  skipFoundingHint: "Set this up later",
+  sweepConfirmTitle: "Finish now?",
+  sweepConfirmBody: "Applies your decisions, reviews the batch, saves a record, and lines up the next files.",
+  sweepThrustPlaceholder: "Anything on your mind? (optional)",
+  addProjectTitle: "Add project",
+  addProjectStart: "Start",
+  refoundTitle: "Set up again?",
+  setupNote: "Pick the agent Kettle will run. Kettle never stores API keys.",
 };
 
 export type UiCopyKey = keyof typeof UI_COPY;
@@ -145,4 +158,71 @@ export function uiCopy(key: UiCopyKey, opts?: { short?: boolean }): string {
     if (s) return s;
   }
   return UI_COPY[key];
+}
+
+/**
+ * One message per flow state (kettle-core docs/SITTING-FLOWS.md §7), in three
+ * registers of the same message: `line` for a status bar, `short` for one
+ * sentence, `full` for a guide. Never author a sentence for a state listed here.
+ */
+export const UI_STATES = {
+  attached: {
+    line: "Pick a file",
+    short: "Pick a file to begin.",
+    full: "Kettle has lined up a batch of files for you. Pick one to read it with the agent's summary. Mark your decisions as you go, then press Finish batch when you are done.",
+  },
+  interviewing: {
+    line: "Chat with the agent",
+    short: "Chat with the Kettle agent; when you are done it drafts a proposal to review.",
+    full: "Chat with the Kettle agent to tell it what this project is and what you want from a second reader. When you are ready to proceed, the agent writes a proposal for you to review and edit. The queue fills after you approve the proposal.",
+  },
+  proposing: {
+    line: "Edit the proposal",
+    short: "Edit the proposal, then approve it to set up your project.",
+    full: "The proposal is open in the editor. This is the document of record for your Kettle project. Read it, change anything that does not fit, and chat with the agent to revise or co-write.",
+  },
+  founding: {
+    line: "Setting up…",
+    short: "Setting up your project…",
+    full: "The agent is setting up your project and lining up the first batch of files from your proposal. This may take a few minutes.",
+  },
+  founded: {
+    line: "Ready to begin",
+    short: "Your project is ready. Pick a file to begin.",
+    full: "Your project is set up and the first batch of files is ready. Pick one to read it with the agent's summary, edit and comment as you go, then press Finish batch when you are done.",
+  },
+  sweeping: {
+    line: "Finishing the batch…",
+    short: "Applying your decisions and lining up the next batch.",
+    full: "The agent is applying your decisions, reviewing what changed, noting anything else it affects, saving a record of this round, and lining up the next batch.",
+  },
+  broken: {
+    line: "This project needs attention.",
+    short: "Kettle could not open this project. Nothing has been changed.",
+    full: "Kettle could not open this project. Its folder may have moved, or its records may be unreadable. Nothing has been changed on disk. Check the project folder, or set the project up again — your own files are never touched.",
+  },
+} as const;
+
+export type UiStateName = keyof typeof UI_STATES;
+export type UiStateRegister = "line" | "short" | "full";
+
+/**
+ * The message for `state` in the register the surface affords. A missing register
+ * falls back to the longest one present: too many words beats none.
+ */
+export function uiState(state: UiStateName, register: UiStateRegister = "short"): string {
+  return pickStateRegister(UI_STATES[state], register);
+}
+
+/** The register asked for, else the longest one present. */
+export function pickStateRegister(
+  rec: Partial<Record<UiStateRegister, string>>,
+  register: UiStateRegister,
+): string {
+  const own = rec[register];
+  if (own) return own;
+  for (const r of ["full", "short", "line"] as const) {
+    if (rec[r]) return rec[r] as string;
+  }
+  return "";
 }

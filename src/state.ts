@@ -117,3 +117,22 @@ export function isInterviewing(): boolean {
 export function isProposing(): boolean {
   return state.foundingPhase === "proposing";
 }
+
+/**
+ * What the desk is doing beyond its founding phase: a finish or setup stream
+ * running, or a desk core could not read. Drives the catalog state shown in the
+ * status bar (ritualParity.deskStateName).
+ */
+export type DeskActivity = "idle" | "founding" | "sweeping" | "broken";
+
+let activity: DeskActivity = "idle";
+
+export function setDeskActivity(next: DeskActivity): void {
+  if (activity === next) return;
+  activity = next;
+  emit();
+}
+
+export function getDeskActivity(): DeskActivity {
+  return activity;
+}

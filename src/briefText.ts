@@ -37,7 +37,7 @@ export function projectSummarySentence(
 ): string {
   const name = (projectName || "This project").trim() || "This project";
   if (!projectRoot) {
-    return `${name} is open on this desk.`;
+    return `${name} is open.`;
   }
   const candidates = [
     path.join(projectRoot, ".kettle", "PROJECT.md"),
@@ -52,7 +52,7 @@ export function projectSummarySentence(
       /* try next */
     }
   }
-  return `${name} is open on this desk.`;
+  return `${name} is open.`;
 }
 
 /** First prose sentence from markdown (skip headings, fences, list-only lines). */

@@ -333,6 +333,21 @@ export class KettleApi {
     });
   }
 
+  /**
+   * "Not this": set one file aside, or with `undo` bring it back to pending.
+   * One call, no explanation asked. Core refuses the proposal entry with 400;
+   * its error message is written for the user and is shown as-is.
+   */
+  setAside(
+    projectId: string,
+    entryId: string | number,
+    opts?: { undo?: boolean },
+  ): Promise<{ ok: boolean; status?: string }> {
+    const body: Record<string, unknown> = { project: projectId, id: entryId };
+    if (opts?.undo) body.undo = true;
+    return this.request("POST", "/api/set-aside", { body });
+  }
+
   /** User/agent feedback on an entry — send-back note, not approve. Empty text clears. */
   comment(
     projectId: string,
@@ -344,7 +359,7 @@ export class KettleApi {
     });
   }
 
-  /** Commit pass for the sitting — NDJSON stream, distinct from approve. */
+  /** Finish batch (core's sweep) — NDJSON stream, distinct from approve. */
   sweep(
     projectId: string,
     opts?: {

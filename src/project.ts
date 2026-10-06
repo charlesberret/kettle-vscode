@@ -177,32 +177,55 @@ export function isApprovedEntry(entry: QueueEntry): boolean {
   return false;
 }
 
-/**
- * Sitting order for the Explorer queue: pending first (stable), approved last.
- * Does not mutate the input array.
- */
-export function sortQueueForDisplay(entries: QueueEntry[]): QueueEntry[] {
-  const pending: QueueEntry[] = [];
-  const approved: QueueEntry[] = [];
-  for (const e of entries) {
-    if (isApprovedEntry(e)) approved.push(e);
-    else pending.push(e);
-  }
-  return pending.concat(approved);
+/** True when the user set this file aside with Not this. */
+export function isSetAsideEntry(entry: QueueEntry): boolean {
+  return (entry.status || "").toLowerCase() === "set-aside";
 }
 
 /**
- * Next unapproved entry for openNextOnApprove.
- * - Prefer the entry after `afterId` among still-pending rows.
- * - If `afterId` is no longer pending (typical after refresh), return the
- *   first pending row in display order.
+ * A file is handled once the user has decided about it: approved, sent back for
+ * rework, or set aside (Not this). Handled files sink to the bottom of the queue
+ * and do not hold up finishing the batch. Same set as the core sitting's
+ * `isHandled` (kettle-core docs/SITTING-FLOWS.md §2.3a).
+ */
+export const HANDLED_STATUSES: readonly string[] = ["approved", "rework", "set-aside"];
+
+export function isHandledEntry(entry: QueueEntry): boolean {
+  if (isApprovedEntry(entry)) return true;
+  return HANDLED_STATUSES.includes((entry.status || "").toLowerCase());
+}
+
+/** True when every file in the queue is handled (and there is at least one). */
+export function allHandled(entries: QueueEntry[]): boolean {
+  return entries.length > 0 && entries.every(isHandledEntry);
+}
+
+/**
+ * Queue order for the Explorer list: files still waiting first (stable), handled
+ * files last. Does not mutate the input array.
+ */
+export function sortQueueForDisplay(entries: QueueEntry[]): QueueEntry[] {
+  const waiting: QueueEntry[] = [];
+  const handled: QueueEntry[] = [];
+  for (const e of entries) {
+    if (isHandledEntry(e)) handled.push(e);
+    else waiting.push(e);
+  }
+  return waiting.concat(handled);
+}
+
+/**
+ * Next file still waiting for a decision (after Approve or Not this).
+ * - Prefer the file after `afterId` among those still waiting.
+ * - If `afterId` is no longer waiting (typical after refresh), return the
+ *   first waiting file in display order.
  */
 export function nextPendingEntry(
   entries: QueueEntry[],
   afterId?: string | number,
 ): QueueEntry | undefined {
   const ordered = sortQueueForDisplay(entries);
-  const pending = ordered.filter((e) => !isApprovedEntry(e));
+  const pending = ordered.filter((e) => !isHandledEntry(e));
   if (!pending.length) return undefined;
   if (afterId == null) return pending[0];
   const idx = pending.findIndex((e) => String(e.id) === String(afterId));

@@ -10,6 +10,14 @@
  * is a second source. A `.js` path is still accepted so this script keeps working
  * against an older core checkout.
  *
+ * Carries `keys` (text + short variants) and `states` (one message per flow state
+ * in `line` / `short` / `full` registers — kettle-core docs/SITTING-FLOWS.md §7).
+ *
+ * To sync from a core branch without checking it out, export the file and point
+ * KETTLE_UI_COPY at it:
+ *   git -C ../kettle-core show origin/main:kettle/static/ui-copy.json > /tmp/ui-copy.json
+ *   KETTLE_UI_COPY=/tmp/ui-copy.json npm run sync-ui-copy
+ *
  * Resolution order:
  *   1. KETTLE_UI_COPY / SETSWEEP_UI_COPY (absolute path to ui-copy.json or .js)
  *   2. KETTLE_SRC / SETSWEEP_SRC + /kettle/static/ui-copy.json
@@ -27,6 +35,8 @@ const require = createRequire(import.meta.url);
 const checkOnly = process.argv.includes("--check");
 
 const NAMES = ["ui-copy.json", "ui-copy.js"];
+/** State registers, narrowest last: a status bar, one sentence, a guide. */
+const REGISTERS = ["line", "short", "full"];
 
 function candidates() {
   const list = [];
@@ -85,7 +95,20 @@ function readCatalog(src) {
       if (typeof v.short === "string" && v.short) short[k] = v.short;
       if (typeof v.note === "string" && v.note) note[k] = v.note;
     }
-    return { text, short, note };
+    const states = {};
+    const rawStates = raw.states && typeof raw.states === "object" ? raw.states : {};
+    for (const [name, rec] of Object.entries(rawStates)) {
+      if (!rec || typeof rec !== "object") continue;
+      const out = {};
+      for (const reg of REGISTERS) {
+        if (typeof rec[reg] === "string" && rec[reg]) out[reg] = rec[reg];
+      }
+      if (!Object.keys(out).length) {
+        throw new Error(`ui-copy state ${name} has no line/short/full`);
+      }
+      states[name] = out;
+    }
+    return { text, short, note, states };
   }
   const copy = require(src);
   if (!copy || typeof copy !== "object") {
@@ -98,7 +121,7 @@ function readCatalog(src) {
     }
     text[k] = v;
   }
-  return { text, short: {}, note: {} };
+  return { text, short: {}, note: {}, states: {} };
 }
 
 function entries(map, comments) {
@@ -110,7 +133,18 @@ function entries(map, comments) {
     .join("\n");
 }
 
-function generate({ text, short, note }) {
+function stateEntries(states) {
+  return Object.keys(states)
+    .map((name) => {
+      const regs = REGISTERS.filter((r) => states[name][r] !== undefined)
+        .map((r) => `    ${r}: ${JSON.stringify(states[name][r])},`)
+        .join("\n");
+      return `  ${name}: {\n${regs}\n  },`;
+    })
+    .join("\n");
+}
+
+function generate({ text, short, note, states }) {
   return `/**
  * AUTO-GENERATED — do not edit by hand.
  * Source: kettle-core kettle/static/ui-copy.json
@@ -140,6 +174,39 @@ export function uiCopy(key: UiCopyKey, opts?: { short?: boolean }): string {
     if (s) return s;
   }
   return UI_COPY[key];
+}
+
+/**
+ * One message per flow state (kettle-core docs/SITTING-FLOWS.md §7), in three
+ * registers of the same message: \`line\` for a status bar, \`short\` for one
+ * sentence, \`full\` for a guide. Never author a sentence for a state listed here.
+ */
+export const UI_STATES = {
+${stateEntries(states)}
+} as const;
+
+export type UiStateName = keyof typeof UI_STATES;
+export type UiStateRegister = "line" | "short" | "full";
+
+/**
+ * The message for \`state\` in the register the surface affords. A missing register
+ * falls back to the longest one present: too many words beats none.
+ */
+export function uiState(state: UiStateName, register: UiStateRegister = "short"): string {
+  return pickStateRegister(UI_STATES[state], register);
+}
+
+/** The register asked for, else the longest one present. */
+export function pickStateRegister(
+  rec: Partial<Record<UiStateRegister, string>>,
+  register: UiStateRegister,
+): string {
+  const own = rec[register];
+  if (own) return own;
+  for (const r of ["full", "short", "line"] as const) {
+    if (rec[r]) return rec[r] as string;
+  }
+  return "";
 }
 `;
 }

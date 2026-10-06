@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 import type { QueueEntry, KettleApi } from "../api";
 import { findEntryForEditorPath } from "../paths";
 import * as state from "../state";
+import { uiCopy, uiState } from "../uiCopy";
 
 export type ToolsDeps = {
   getApi: () => Promise<KettleApi>;
@@ -157,8 +158,8 @@ export function registerKettleTools(
         deps.onDeskAction?.();
         return textResult(
           text.trim()
-            ? `Comment saved on entry ${id}.`
-            : `Comment cleared on entry ${id}.`,
+            ? `Comment saved on file ${id}.`
+            : `Comment cleared on file ${id}.`,
         );
       } catch (e) {
         return textResult(`kettle_comment error: ${e instanceof Error ? e.message : String(e)}`);
@@ -166,7 +167,7 @@ export function registerKettleTools(
     },
     async prepareInvocation(options) {
       return {
-        invocationMessage: `Comment on Kettle entry ${options.input?.id ?? "?"}…`,
+        invocationMessage: `Comment on Kettle file ${options.input?.id ?? "?"}…`,
       };
     },
   });
@@ -181,19 +182,19 @@ export function registerKettleTools(
         // Match main UI: soft info modal; honor kettle.confirmApprove.
         const cfg = vscode.workspace.getConfiguration("kettle");
         if (cfg.get<boolean>("confirmApprove", true)) {
+          const approve = uiCopy("approveLabel");
           const choice = await vscode.window.showInformationMessage(
-            `Approve this version of ${id}?`,
+            `${approve} this version of ${id}?`,
             {
               modal: true,
-              detail:
-                'This will mark the file as approved in the Kettle queue. You must click the "sweep" button for the agent to commit and process this batch of files.',
+              detail: uiCopy("approveHint"),
             },
-            "Approve",
+            approve,
             "Don't ask again",
           );
           if (choice === "Don't ask again") {
             await cfg.update("confirmApprove", false, vscode.ConfigurationTarget.Global);
-          } else if (choice !== "Approve") {
+          } else if (choice !== approve) {
             return textResult("Approve cancelled.");
           }
         }
@@ -202,7 +203,7 @@ export function registerKettleTools(
         await deps.refreshQueue();
         deps.onDeskAction?.();
         return textResult(
-          `Approved entry ${id} (ruling bookmarked; run Sweep when the sitting is done).`,
+          `Approved file ${id}. Nothing changes until the user presses ${uiCopy("sweepLabel")}.`,
         );
       } catch (e) {
         return textResult(`kettle_approve error: ${e instanceof Error ? e.message : String(e)}`);
@@ -210,12 +211,10 @@ export function registerKettleTools(
     },
     async prepareInvocation(options) {
       return {
-        invocationMessage: `Approve Kettle entry ${options.input?.id ?? "?"} (bookmark only)…`,
+        invocationMessage: `Approve Kettle file ${options.input?.id ?? "?"}…`,
         confirmationMessages: {
-          title: "Approve Kettle entry?",
-          message: new vscode.MarkdownString(
-            "Bookmarks a user ruling only — **does not** apply diffs or commit. Sweep is the commit pass.",
-          ),
+          title: "Approve this file?",
+          message: new vscode.MarkdownString(uiCopy("approveHint")),
         },
       };
     },
@@ -226,19 +225,20 @@ export function registerKettleTools(
       try {
         const projectId = await deps.getProjectId();
         if (!projectId) return textResult("No project selected.");
+        const go = uiCopy("sweepLabel");
         const ok = await vscode.window.showWarningMessage(
-          `Sweep project “${projectId}”? This is the commit pass (diff → assess → ripple → learn), not approve.`,
-          { modal: true },
-          "Sweep",
+          uiCopy("sweepConfirmTitle"),
+          { modal: true, detail: `${uiCopy("sweepConfirmBody")}\n\nProject: ${projectId}` },
+          go,
         );
-        if (ok !== "Sweep") return textResult("Sweep cancelled.");
+        if (ok !== go) return textResult("Finish batch cancelled.");
         const api = await deps.getApi();
         const result = await api.sweep(projectId);
         await deps.refreshQueue();
         deps.onDeskAction?.();
         const preview = result.text.slice(0, 1500);
         return textResult(
-          `Sweep finished for ${projectId}.\n\n${preview}${result.text.length > 1500 ? "…" : ""}`,
+          `Batch finished for ${projectId}.\n\n${preview}${result.text.length > 1500 ? "…" : ""}`,
         );
       } catch (e) {
         return textResult(`kettle_sweep error: ${e instanceof Error ? e.message : String(e)}`);
@@ -246,12 +246,10 @@ export function registerKettleTools(
     },
     async prepareInvocation() {
       return {
-        invocationMessage: "Run Kettle sweep (commit pass)…",
+        invocationMessage: `${uiState("sweeping", "line")}`,
         confirmationMessages: {
-          title: "Sweep project?",
-          message: new vscode.MarkdownString(
-            "Runs the **commit pass** for the sitting. Distinct from Approve (bookmark only).",
-          ),
+          title: uiCopy("sweepConfirmTitle"),
+          message: new vscode.MarkdownString(uiCopy("sweepConfirmBody")),
         },
       };
     },
