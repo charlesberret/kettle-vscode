@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   chatModeForPhase,
+  foundingPhaseFrom,
   isProposalEntry,
   proposalDocumentPath,
   proposalEntryForFounding,
@@ -149,5 +150,33 @@ describe("canonical founding state machine", () => {
     assert.equal(ready.canApprove, true);
     assert.equal(ready.canComment, true);
     assert.equal(ready.canSweep, true);
+  });
+});
+
+describe("founding phase from the core beacon", () => {
+  it("trusts core's founded predicate, not entry counts", () => {
+    // The bug this replaces: a found run that filed entries but never wrote
+    // PROJECT.md opened in VS Code as an ordinary desk. Core's rule is charter
+    // AND content entry (kettle-core docs/SITTING-FLOWS.md §3).
+    assert.equal(
+      foundingPhaseFrom({ status: "proposing", founded: false, has_proposal: true }),
+      "proposing",
+    );
+    assert.equal(foundingPhaseFrom({ status: "founded", founded: true }), "founded");
+    assert.equal(
+      foundingPhaseFrom({ status: "interviewing", founded: false }),
+      "interviewing",
+    );
+    assert.equal(
+      foundingPhaseFrom({ status: "none", founded: false, has_proposal: true }),
+      "proposing",
+    );
+    assert.equal(foundingPhaseFrom({ status: "none", founded: false }), "none");
+  });
+
+  it("falls back to status on a core too old to send founded", () => {
+    assert.equal(foundingPhaseFrom({ status: "founded" }), "founded");
+    assert.equal(foundingPhaseFrom({ status: "interviewing" }), "interviewing");
+    assert.equal(foundingPhaseFrom({ status: "proposing" }), "proposing");
   });
 });

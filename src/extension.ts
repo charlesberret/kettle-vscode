@@ -36,6 +36,7 @@ import {
 } from "./project";
 import { registerQueueView, type QueueTreeProvider } from "./queueView";
 import {
+  foundingPhaseFrom,
   isProposalEntry,
   proposalDocumentPath,
   proposalEntryForFounding,
@@ -1634,13 +1635,13 @@ async function ensureProjectRoot(projectId: string): Promise<string | undefined>
 async function refreshFoundingPhase(projectId: string): Promise<void> {
   try {
     const iv = await (await api()).interviewStatus(projectId, { mutate: false });
-    const founded =
-      iv.status === "founded" || !!iv.has_entries || (iv.entry_count ?? 0) > 0;
-    if (founded) {
+    // One formula, shared with the tests: core's `founded` beats any local guess.
+    const phase = foundingPhaseFrom(iv);
+    if (phase === "founded") {
       state.setFoundingPhase("founded");
-    } else if (iv.status === "proposing" || iv.has_proposal) {
+    } else if (phase === "proposing") {
       state.setFoundingPhase("proposing");
-    } else if (iv.status === "interviewing") {
+    } else if (phase === "interviewing") {
       state.setFoundingPhase("interviewing");
     } else {
       state.setFoundingPhase("none");
