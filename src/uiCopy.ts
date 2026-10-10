@@ -33,7 +33,7 @@ export const UI_COPY = {
   proposingQueueHintTitle: "Proposal",
   /** Queue empty-state body while proposing. The short form is what a status bar shows. */
   proposingQueueHintBody: "Edit the proposal until it matches what you want from this project. Chat with the agent to revise it or write it together. When it looks right, approve it — that sets up your project and lines up the first batch of files to review.",
-  /** Second line of the brief when a project desk is bound and no queue entry is selected. */
+  /** Second line of the brief when a project is bound and no queue entry is selected. */
   noEntryBriefBody: "Kettle lines up a batch of files for you to review, edit, and approve. When you are done, press Finish batch: the agent applies your decisions and lines up the next one.",
   /** Hed of the queue pane (left column, top). */
   queueTitle: "Queue",
@@ -43,13 +43,13 @@ export const UI_COPY = {
   metaEditLabel: "Edit",
   /** Label beside the project selector in the desk chrome. */
   deskProjectLabel: "Project",
-  /** Ritual control: rules on the open entry. Reads Approve in both states — while a proposal is open, pressing it founds the project desk. */
+  /** Ritual control: marks a decision on the open file. Reads Approve in every phase; while a proposal is open, pressing it sets up the project. */
   approveLabel: "Approve",
   /** The same control while proposing. Same word since 2026-10-01; kept as its own key so a viewport may still differ if it needs to. */
   approveLabelFounding: "Approve",
   /** Tooltip on Approve. States what it does not do, which is the common misread. */
   approveHint: "Mark your decision on this file. Nothing changes until you press Finish batch.",
-  /** Tooltip on the ritual control while a proposal is open. The label does not change (Approve was retired 2026-10-01); the sitting promotes the control visually instead. */
+  /** Tooltip on Approve while a proposal is open. The label does not change (Found Desk was retired 2026-10-01); the sitting promotes the control visually instead. */
   approveHintFounding: "Approve the proposal to set up your project",
   /** Ritual button: open the note box for the open file. */
   commentLabel: "Comment",
@@ -73,11 +73,15 @@ export const UI_COPY = {
   sweepHint: "Apply your decisions, review what changed, note anything else it affects, and line up the next files",
   /** Finish batch, relabelled during the 3-second window when confirmation is off; pressing it cancels. */
   sweepUndoLabel: "Undo",
+  /** Checkbox on a confirmation dialog. Viewports may add what changes, e.g. the 3-second Undo on Finish batch. */
+  dontAskAgainLabel: "Don't ask again",
+  /** Dismisses a dialog without doing anything. */
+  cancelLabel: "Cancel",
   /** Status strip under the project bar while the founding interview runs. Title Case as a hed (docs/UI.md); the term is lowercase in prose. */
   foundingHeadTitle: "Setting up your project",
   /** Ends the founding interview early and writes the Desk Proposal. */
   draftProposalLabel: "Auto: let the Kettle agent decide",
-  /** Tooltip on Draft Proposal ✓. */
+  /** Tooltip on the Auto control that ends the interview early. */
   draftProposalHint: "Skip the rest of the questions and let the agent write the proposal now",
   /** Leaves founding for later and opens the project as-is. */
   skipFoundingLabel: "Skip: open a blank project for now",
