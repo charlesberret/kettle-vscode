@@ -183,6 +183,7 @@ export function registerKettleTools(
         const cfg = vscode.workspace.getConfiguration("kettle");
         if (cfg.get<boolean>("confirmApprove", true)) {
           const approve = uiCopy("approveLabel");
+          const dontAsk = uiCopy("dontAskAgainLabel");
           const choice = await vscode.window.showInformationMessage(
             `${approve} this version of ${id}?`,
             {
@@ -190,9 +191,9 @@ export function registerKettleTools(
               detail: uiCopy("approveHint"),
             },
             approve,
-            "Don't ask again",
+            dontAsk,
           );
-          if (choice === "Don't ask again") {
+          if (choice === dontAsk) {
             await cfg.update("confirmApprove", false, vscode.ConfigurationTarget.Global);
           } else if (choice !== approve) {
             return textResult("Approve cancelled.");

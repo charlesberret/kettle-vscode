@@ -267,6 +267,7 @@ async function confirmApprove(
     return choice === approve;
   }
 
+  const dontAsk = uiCopy("dontAskAgainLabel");
   const choice = await vscode.window.showInformationMessage(
     `${approve} this version of ${label}?`,
     {
@@ -274,9 +275,9 @@ async function confirmApprove(
       detail: uiCopy("approveHint"),
     },
     approve,
-    "Don't ask again",
+    dontAsk,
   );
-  if (choice === "Don't ask again") {
+  if (choice === dontAsk) {
     await vscode.workspace
       .getConfiguration("kettle")
       .update("confirmApprove", false, vscode.ConfigurationTarget.Global);

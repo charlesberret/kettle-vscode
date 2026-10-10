@@ -2050,7 +2050,7 @@ export function shellHtml(): string {
     <div class="section-label">${escapeHtml(uiCopy("commentLabel"))}</div>
     <textarea id="commentText" placeholder="${escapeHtml(UI_COPY.commentPlaceholder)}" disabled></textarea>
     <div class="row">
-      <button class="ghost" id="btnCommentCancel" type="button">Cancel</button>
+      <button class="ghost" id="btnCommentCancel" type="button">${escapeHtml(uiCopy("cancelLabel"))}</button>
       <button id="btnCommentSave" disabled>${escapeHtml(uiCopy("commentSaveLabel"))}</button>
     </div>
   </section>
@@ -2060,7 +2060,7 @@ export function shellHtml(): string {
     <p class="sweep-body">${escapeHtml(uiCopy("sweepConfirmBody"))}</p>
     <textarea class="thrust" id="thrust" rows="2" placeholder="${escapeHtml(uiCopy("sweepThrustPlaceholder"))}"></textarea>
     <div class="row">
-      <button class="ghost" id="btnSweepCancel" type="button">Cancel</button>
+      <button class="ghost" id="btnSweepCancel" type="button">${escapeHtml(uiCopy("cancelLabel"))}</button>
       <button id="btnSweepGo" type="button"><span class="btn-ico">${icon("play")}</span><span class="btn-label">${escapeHtml(uiCopy("sweepLabel"))}</span></button>
     </div>
   </section>
