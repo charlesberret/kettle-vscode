@@ -2,9 +2,7 @@
 
 ## What “selected” means
 
-We want the **same list selection chrome** as a click in the Kettle queue
-(highlighted row), when the active editor file is on the queue — **not** a text
-badge like `open`.
+We want the **same list selection chrome** as a click in the Kettle queue (highlighted row), when the active editor file is on the queue — **not** a text badge like `open`.
 
 Host API: `TreeView.reveal(element, { select: true, focus: false })`.
 
@@ -43,9 +41,7 @@ tail -n 100 ~/.cache/kettle/plugin-debug.log
 | per-row `ABS=editor` | That entry’s realpath equals the editor |
 | per-row `REL=editor` | Display path equals path relative to root |
 
-If **`match id` is `(none)`** while the file is on the queue: fix path matching
-(symlink roots, registry root vs entry paths). Unit tests live in
-`src/test/paths.test.ts`.
+If **`match id` is `(none)`** while the file is on the queue: fix path matching (symlink roots, registry root vs entry paths). Unit tests live in `src/test/paths.test.ts`.
 
 **Reveal probe**
 
@@ -60,17 +56,11 @@ If **`match id` is `(none)`** while the file is on the queue: fix path matching
 
 ### Failure modes (what we’ve hit)
 
-1. **Path miss** — entry and registry use different symlinked working roots.
-   Matching uses realpath; if it still misses, probe rows show why.
-2. **Cache miss** — KETTLE section never expanded → `getChildren` never ran →
-   `reveal` has no host-known element. Expand KETTLE once.
-3. **`getParent` missing** (confirmed 2026-07-22 on Cursor) — host throws:
-   `Required registered TreeDataProvider to implement 'getParent' method to access 'reveal'`.
-   Flat lists must implement `getParent` returning `undefined` for every row.
-4. **reveal ok but sel after empty** — host ignored selection (collapsed section,
-   or TreeItem `command` interaction). Diagnostic retries with `focus: true` once.
-5. **Rebuild wiped identity** — list must not full-refresh on `lastEntry` alone
-   (see `listSignature` in `queueView.ts`).
+1. **Path miss** — entry and registry use different symlinked working roots. Matching uses realpath; if it still misses, probe rows show why.
+2. **Cache miss** — KETTLE section never expanded → `getChildren` never ran → `reveal` has no host-known element. Expand KETTLE once.
+3. **`getParent` missing** (confirmed 2026-07-22 on Cursor) — host throws: `Required registered TreeDataProvider to implement 'getParent' method to access 'reveal'`. Flat lists must implement `getParent` returning `undefined` for every row.
+4. **reveal ok but sel after empty** — host ignored selection (collapsed section, or TreeItem `command` interaction). Diagnostic retries with `focus: true` once.
+5. **Rebuild wiped identity** — list must not full-refresh on `lastEntry` alone (see `listSignature` in `queueView.ts`).
 
 ## Automated tests
 
@@ -82,8 +72,7 @@ npm test
 - `src/test/project.test.ts` — display paths, queue sort
 - `buildSelectionProbe` pure report shape
 
-There is **no** headless test for Cursor’s selection *chrome*; that is host UI.
-The diagnostic command is the integration check on a live install.
+There is **no** headless test for Cursor’s selection *chrome*; that is host UI. The diagnostic command is the integration check on a live install.
 
 ## Expected healthy log (sketch)
 

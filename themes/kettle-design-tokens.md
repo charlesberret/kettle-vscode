@@ -1,7 +1,6 @@
 # Kettle design tokens (LLM handoff)
 
-Use this palette for any UI, illustration, mock, or brand-adjacent design work for **Kettle**.
-Do not invent a competing palette. Prefer semantic roles over raw hue names.
+Use this palette for any UI, illustration, mock, or brand-adjacent design work for **Kettle**. Do not invent a competing palette. Prefer semantic roles over raw hue names.
 
 ## Character
 

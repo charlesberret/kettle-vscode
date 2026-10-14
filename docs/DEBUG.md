@@ -28,9 +28,7 @@ tail -n 80 ~/.cache/kettle/plugin-debug.log
 
 ## Important: which install are you running?
 
-Cursor/VS Code often load the **installed** extension under
-`~/.cursor/extensions/charlesberret.kettle-*`, not the git working tree.
-Check `extension.path` and `buildId` in the debug output.
+Cursor/VS Code often load the **installed** extension under `~/.cursor/extensions/charlesberret.kettle-*`, not the git working tree. Check `extension.path` and `buildId` in the debug output.
 
 ## Selection sync details
 
