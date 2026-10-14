@@ -1,8 +1,9 @@
 # Kettle for VS Code and Cursor
 
-[Kettle](https://github.com/charlesberret/kettle) is a local-first way to
-review work produced with coding and writing agents. This extension puts
-Kettle's queue of files and its panel inside VS Code and Cursor.
+[Kettle](https://github.com/charlesberret/kettle) is a local-first review desk
+that promotes careful attention to projects coded and written with agents.
+This extension puts Kettle's queue of files and its panel inside VS Code and
+Cursor.
 
 ## How it works
 
