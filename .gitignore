@@ -17,3 +17,20 @@ coverage/
 # Agent working files (kept on disk, never published)
 .coordination/
 .inbox/
+
+
+# Local surface — not for a public tree
+.claude/
+.cursor/
+.grok/
+.aider*
+!.env.example
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.swp
+Thumbs.db
