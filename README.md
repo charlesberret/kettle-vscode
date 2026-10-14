@@ -1,8 +1,9 @@
 # Kettle for VS Code and Cursor
 
-[Kettle](https://github.com/charlesberret/kettle) is a local-first way to
-review work produced with coding and writing agents. This extension puts
-Kettle's queue of files and its panel inside VS Code and Cursor.
+[Kettle](https://github.com/charlesberret/kettle) is a local-first review desk
+that promotes careful attention to projects coded and written with agents.
+This extension puts Kettle's queue of files and its panel inside VS Code and
+Cursor.
 
 ## How it works
 
@@ -43,7 +44,7 @@ not split or stranded.
 - VS Code 1.95+ or a compatible Cursor release
 - Node.js 20+
 - a local Kettle core installation; see the
-  [core quick start](https://github.com/charlesberret/kettle-core#quick-start)
+  [core install](https://github.com/charlesberret/kettle-core/blob/main/INSTALL.md)
 
 ## Build and install
 
@@ -66,7 +67,7 @@ By default the extension attaches to a healthy local core or starts `kettle`
 on port `4242`.
 
 If auto-start cannot locate the CLI, set `kettle.command` to its absolute path,
-for example `~/.kettle-venv/bin/kettle`.
+for example `~/.local/bin/kettle`.
 
 ## Color themes
 
@@ -87,7 +88,8 @@ buttons, active tab and panel borders — never text. Text roles follow the
 core `acc`: the pack's own accent for the cool packs, the marquee accent
 for the warm ones. Selection takes the pack's wash, because VS Code gives no
 selection foreground. Surfaces are the measured shade steps from the palette
-(`resolved`), not mixes. Upstream of core: `~/cloud/sync/design/palettes`.
+(`resolved`), not mixes. The palette library lives outside kettle-core;
+see that repo's `docs/THEMES.md`.
 
 ## Develop
 

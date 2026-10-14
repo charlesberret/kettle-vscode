@@ -1,19 +1,52 @@
-# Local ops notes / agent handoffs (not shipped)
+# House local surface — never publish.
 .local/
+.inbox/
+.coordination/
+.claude/
+.cursor/
+.grok/
+.aider*
+.worktrees/
 
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Node
 node_modules/
 dist/
 out/
+build/
 *.vsix
 *.tsbuildinfo
-.DS_Store
-.idea/
-.env
-.env.*
-*.log
+.turbo/
 .cache/
 coverage/
 
-# Agent working files (kept on disk, never published)
-.coordination/
-.inbox/
+# Python, in case a helper venv lands here
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+*~
+*.swp
+*.swo
+*.bak
+
+# Editors. .vscode/launch.json and tasks.json are tracked on purpose.
+.idea/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
