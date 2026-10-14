@@ -87,7 +87,8 @@ buttons, active tab and panel borders — never text. Text roles follow the
 core `acc`: the pack's own accent for the cool packs, the marquee accent
 for the warm ones. Selection takes the pack's wash, because VS Code gives no
 selection foreground. Surfaces are the measured shade steps from the palette
-(`resolved`), not mixes. Upstream of core: `~/cloud/sync/design/palettes`.
+(`resolved`), not mixes. The palette library lives outside kettle-core;
+see that repo's `docs/THEMES.md`.
 
 ## Develop
 
