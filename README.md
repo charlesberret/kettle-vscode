@@ -43,7 +43,7 @@ not split or stranded.
 - VS Code 1.95+ or a compatible Cursor release
 - Node.js 20+
 - a local Kettle core installation; see the
-  [core quick start](https://github.com/charlesberret/kettle-core#quick-start)
+  [core install](https://github.com/charlesberret/kettle-core/blob/main/INSTALL.md)
 
 ## Build and install
 
@@ -66,7 +66,7 @@ By default the extension attaches to a healthy local core or starts `kettle`
 on port `4242`.
 
 If auto-start cannot locate the CLI, set `kettle.command` to its absolute path,
-for example `~/.kettle-venv/bin/kettle`.
+for example `~/.local/bin/kettle`.
 
 ## Color themes
 

@@ -17,3 +17,11 @@ coverage/
 # Agent working files (kept on disk, never published)
 .coordination/
 .inbox/
+.claude/
+.cursor/
+.grok/
+.aider*
+*.swp
+*~
+Thumbs.db
+*.code-workspace
