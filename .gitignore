@@ -13,3 +13,7 @@ out/
 *.log
 .cache/
 coverage/
+
+# Agent working files (kept on disk, never published)
+.coordination/
+.inbox/
