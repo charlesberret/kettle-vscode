@@ -25,7 +25,7 @@ During the rename from Setsweep, Kettle prefers the new `kettle` command, `.kett
 
 - VS Code 1.95+ or a compatible Cursor release
 - Node.js 20+
-- a local Kettle core installation; see the [core quick start](https://github.com/charlesberret/kettle-core#quick-start)
+- a local Kettle core installation; see the [core quick start](https://github.com/charlesberret/kettle-core#try-it) and its [install guide](https://github.com/charlesberret/kettle-core/blob/main/INSTALL.md)
 
 ## Build and install
 
