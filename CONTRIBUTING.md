@@ -28,7 +28,7 @@ npm run check-ui-copy
 npm run check-palette
 ```
 
-Do not invent sitting chrome, ritual meanings, or a second type system here. Family contract: `../kettle/docs/explanation/viewports.md`.
+Do not invent sitting chrome, ritual meanings, or a second type system here. Family contract: [viewports](https://github.com/charlesberret/kettle/blob/main/docs/explanation/viewports.md).
 
 ## Pull requests
 

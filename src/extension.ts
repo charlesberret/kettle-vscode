@@ -981,7 +981,7 @@ async function openSoleProjectWorkspace(
     !!vscode.workspace.workspaceFile ||
     fromFolders.length > 1;
 
-  // 1) Project folder first — trust = the desk the patron already chose.
+  // 1) Project folder first — trust = the desk the user already chose.
   if (launchHostCli(root, { newWindow: leaveMulti })) {
     workspaceReloadInFlight = true;
     return "reloading";

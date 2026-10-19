@@ -56,7 +56,7 @@ npm run sync-palette    # regenerate themes/*.json and package.json contributes.
 npm run check-palette   # fail if committed themes drift
 ```
 
-In a glaze pack the enamel is chrome only: cursor, focus ring, badges, buttons, active tab and panel borders. It is never text. Text roles follow the core `acc`, the pack's own accent for the cool packs and the marquee accent for the warm ones. Selection takes the pack's wash, because VS Code gives no selection foreground. Surfaces are the measured shade steps from the palette, `resolved`, not mixes. Upstream of core is `~/cloud/sync/design/palettes`.
+In a glaze pack the enamel is chrome only: cursor, focus ring, badges, buttons, active tab and panel borders. It is never text. Text roles follow the core `acc`, the pack's own accent for the cool packs and the marquee accent for the warm ones. Selection takes the pack's wash, because VS Code gives no selection foreground. Surfaces are the measured shade steps from the palette, `resolved`, not mixes.
 
 ## Develop
 

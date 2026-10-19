@@ -1,5 +1,9 @@
 # Local ops notes / agent handoffs (not shipped)
 .local/
+HANDOFF*.md
+handoff-*.md
+_Status.md
+THREADS.md
 
 node_modules/
 dist/
